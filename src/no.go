@@ -12,5 +12,5 @@ var programm = []Op{
 }
 
 func main() {
-	compile_program(programm)
+	generateYasmLinux_x86_64(programm)
 }
