@@ -33,8 +33,13 @@ func isError(err error) bool {
 	return (err != nil)
 }
 
-func generateYasmLinux_x86_64(program []Op) {
-	f, err := os.OpenFile("output.asm", os.O_RDWR | os.O_CREATE, 0644)
+func generateYasmLinux_x86_64(program []Op, output string) {
+	if !(OP_COUNT == 3) {
+		println("Assertion Failed: Exhaustive handling of operations in generateyasmlinux_x86_64()")
+		os.Exit(1)
+	}
+
+	f, err := os.OpenFile(output, os.O_RDWR | os.O_CREATE, 0644)
 	if isError(err) {
 		os.Exit(3)
 	}
@@ -97,4 +102,6 @@ func generateYasmLinux_x86_64(program []Op) {
 	f.WriteString("    mov rax, 60\n"                              )
 	f.WriteString("    mov rdi, 0\n"                               )
 	f.WriteString("    syscall\n"                                  )
+
+	f.Close()
 }

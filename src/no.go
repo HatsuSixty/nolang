@@ -12,5 +12,5 @@ var programm = []Op{
 }
 
 func main() {
-	generateYasmLinux_x86_64(programm)
+	generateYasmLinux_x86_64(programm, "output.asm")
 }
