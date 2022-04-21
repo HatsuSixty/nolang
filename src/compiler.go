@@ -84,24 +84,25 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	for i := range program {
 		switch program[i].op {
 		case OP_PUSH_INT:
-			f.WriteString("    ;; -- push --\n"                                        )
+			f.WriteString("    ;; -- push --\n"  )
 			f.WriteString("    mov rax, " + strconv.FormatUint(uint64(program[i].operand), 10) + "\n")
-			f.WriteString("    push rax\n"                                             )
+			f.WriteString("    push rax\n"       )
 		case OP_PLUS:
-			f.WriteString("    ;; -- plus --\n"                                        )
-			f.WriteString("    pop rax\n"                                              )
-			f.WriteString("    pop rbx\n"                                              )
-			f.WriteString("    add rax, rbx\n"                                         )
-			f.WriteString("    push rax\n"                                             )
+			f.WriteString("    ;; -- plus --\n"  )
+			f.WriteString("    pop rax\n"        )
+			f.WriteString("    pop rbx\n"        )
+			f.WriteString("    add rax, rbx\n"   )
+			f.WriteString("    push rax\n"       )
 		case OP_PRINT:
-			f.WriteString("    ;; -- print --\n"                                       )
-			f.WriteString("    pop rdi\n"                                              )
-			f.WriteString("    call print\n"                                           )
+			f.WriteString("    ;; -- print --\n" )
+			f.WriteString("    pop rdi\n"        )
+			f.WriteString("    call print\n"     )
 		}
 	}
-	f.WriteString("    mov rax, 60\n"                              )
-	f.WriteString("    mov rdi, 0\n"                               )
-	f.WriteString("    syscall\n"                                  )
+	f.WriteString("    ;; -- built-in exit --\n" )
+	f.WriteString("    mov rax, 60\n"            )
+	f.WriteString("    mov rdi, 0\n"             )
+	f.WriteString("    syscall\n"                )
 
 	f.Close()
 }
