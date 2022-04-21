@@ -20,12 +20,6 @@ type Op struct {
 	operand Operand
 }
 
-func Pop(stack []uint) ([]uint, uint) {
-	poppedVal := stack[len(stack)-1]
-	slice     := stack[:len(stack)-1]
-	return slice, poppedVal
-}
-
 func isError(err error) bool {
 	if err != nil {
 		fmt.Println(err.Error())
