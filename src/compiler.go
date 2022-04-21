@@ -2,6 +2,20 @@ package main
 
 import "fmt"
 
+type OpType int
+const (
+	OP_PLUS           OpType = iota
+	OP_PRINT          /////////////
+	OP_PUSH_INT       /////////////
+	OP_COUNT          /////////////
+)
+
+type Operand int
+type Op struct {
+	op      OpType
+	operand Operand
+}
+
 func pop(stack []uint) ([]uint, uint) {
 	poppedVal := stack[len(stack)-1]
 	slice     := stack[:len(stack)-1]
