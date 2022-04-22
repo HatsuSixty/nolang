@@ -13,4 +13,6 @@ var programm = []Op{
 
 func main() {
 	generateYasmLinux_x86_64(programm, "output.asm")
+	cmdRunEchoInfo("yasm -felf64 output.asm", false)
+	cmdRunEchoInfo("ld -o output output.o",   false)
 }
