@@ -29,7 +29,7 @@ func isError(err error) bool {
 
 func generateYasmLinux_x86_64(program []Op, output string) {
 	if !(OP_COUNT == 3) {
-		println("Assertion Failed: Exhaustive handling of operations in generateyasmlinux_x86_64()")
+		fmt.Errorf("Assertion Failed: Exhaustive handling of operations in generateYasmLinux_x86_64()")
 		os.Exit(1)
 	}
 
