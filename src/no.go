@@ -12,6 +12,11 @@ var programm = []Op{
 	{op: OP_MINUS},
 	{op: OP_PUSH_INT, operand: 34},
 	{op: OP_PLUS},
+	{op: OP_PUSH_INT, operand: 2},
+	{op: OP_DIVMOD},
+	{op: OP_DROP},
+	{op: OP_PUSH_INT, operand: 2},
+	{op: OP_MULT},
 	{op: OP_PRINT},
 }
 

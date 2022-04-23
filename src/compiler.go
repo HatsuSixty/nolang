@@ -10,6 +10,9 @@ type OpType int
 const (
 	OP_PLUS           OpType = iota
 	OP_MINUS          //---------//
+	OP_MULT           //---------//
+	OP_DIVMOD         //---------//
+	OP_DROP           //---------//
 	OP_PRINT          //---------//
 	OP_PUSH_INT       //---------//
 	OP_COUNT          //---------//
@@ -29,7 +32,7 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 4) {
+	if !(OP_COUNT == 7) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -79,25 +82,45 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	for i := range program {
 		switch program[i].op {
 		case OP_PUSH_INT:
-			f.WriteString("    ;; -- push --\n"  )
+			f.WriteString("    ;; -- push --\n"   )
 			f.WriteString("    mov rax, " + strconv.FormatUint(uint64(program[i].operand), 10) + "\n")
-			f.WriteString("    push rax\n"       )
+			f.WriteString("    push rax\n"        )
 		case OP_PLUS:
-			f.WriteString("    ;; -- plus --\n"  )
-			f.WriteString("    pop rax\n"        )
-			f.WriteString("    pop rbx\n"        )
-			f.WriteString("    add rax, rbx\n"   )
-			f.WriteString("    push rax\n"       )
+			f.WriteString("    ;; -- plus --\n"   )
+			f.WriteString("    pop rax\n"         )
+			f.WriteString("    pop rbx\n"         )
+			f.WriteString("    add rax, rbx\n"    )
+			f.WriteString("    push rax\n"        )
 		case OP_MINUS:
-			f.WriteString("    ;; -- minus --\n" )
-			f.WriteString("    pop rax\n"        )
-			f.WriteString("    pop rbx\n"        )
-			f.WriteString("    sub rbx, rax\n"   )
-			f.WriteString("    push rbx\n"       )
+			f.WriteString("    ;; -- minus --\n"  )
+			f.WriteString("    pop rax\n"         )
+			f.WriteString("    pop rbx\n"         )
+			f.WriteString("    sub rbx, rax\n"    )
+			f.WriteString("    push rbx\n"        )
+		case OP_MULT:
+			f.WriteString("    ;; -- mult --\n"   )
+			f.WriteString("    pop rax\n"         )
+			f.WriteString("    pop rbx\n"         )
+			f.WriteString("    mul rbx\n"         )
+			f.WriteString("    push rax\n"        )
+		case OP_DIVMOD:
+			f.WriteString("    ;; -- divmod --\n" )
+			f.WriteString("    xor rdx, rdx\n"    )
+			f.WriteString("    pop rbx\n"         )
+			f.WriteString("    pop rax\n"         )
+			f.WriteString("    div rbx\n"         )
+			f.WriteString("    push rax\n"        )
+			f.WriteString("    push rdx\n"        )
+		case OP_DROP:
+			f.WriteString("    ;; -- drop --\n"   )
+			f.WriteString("    pop rax\n"         )
 		case OP_PRINT:
-			f.WriteString("    ;; -- print --\n" )
-			f.WriteString("    pop rdi\n"        )
-			f.WriteString("    call print\n"     )
+			f.WriteString("    ;; -- print --\n"  )
+			f.WriteString("    pop rdi\n"         )
+			f.WriteString("    call print\n"      )
+		default:
+			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
+			os.Exit(2)
 		}
 	}
 	f.WriteString("    ;; -- built-in exit --\n" )
