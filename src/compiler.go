@@ -9,9 +9,10 @@ import (
 type OpType int
 const (
 	OP_PLUS           OpType = iota
-	OP_PRINT          /////////////
-	OP_PUSH_INT       /////////////
-	OP_COUNT          /////////////
+	OP_MINUS          //---------//
+	OP_PRINT          //---------//
+	OP_PUSH_INT       //---------//
+	OP_COUNT          //---------//
 )
 
 type Operand int
@@ -28,8 +29,8 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 3) {
-		fmt.Errorf("Assertion Failed: Exhaustive handling of operations in generateYasmLinux_x86_64()")
+	if !(OP_COUNT == 4) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
 
@@ -87,6 +88,12 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop rbx\n"        )
 			f.WriteString("    add rax, rbx\n"   )
 			f.WriteString("    push rax\n"       )
+		case OP_MINUS:
+			f.WriteString("    ;; -- minus --\n" )
+			f.WriteString("    pop rax\n"        )
+			f.WriteString("    pop rbx\n"        )
+			f.WriteString("    sub rbx, rax\n"   )
+			f.WriteString("    push rbx\n"       )
 		case OP_PRINT:
 			f.WriteString("    ;; -- print --\n" )
 			f.WriteString("    pop rdi\n"        )
