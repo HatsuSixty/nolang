@@ -8,14 +8,14 @@ import (
 
 type OpType int
 const (
-	OP_PLUS           OpType = iota
-	OP_MINUS          //---------//
-	OP_MULT           //---------//
-	OP_DIVMOD         //---------//
-	OP_DROP           //---------//
-	OP_PRINT          //---------//
-	OP_PUSH_INT       //---------//
-	OP_COUNT          //---------//
+	OP_PLUS     OpType = iota
+	OP_MINUS    OpType = iota
+	OP_MULT     OpType = iota
+	OP_DIVMOD   OpType = iota
+	OP_DROP     OpType = iota
+	OP_PRINT    OpType = iota
+	OP_PUSH_INT OpType = iota
+	OP_COUNT    OpType = iota
 )
 
 type Operand int

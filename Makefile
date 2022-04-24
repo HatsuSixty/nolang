@@ -1,6 +1,7 @@
-GO=go
+GO    = go
+FILES = ./src/no.go ./src/compiler.go ./src/common.go ./src/lexer.go
 
 all: no
 
-no: ./src/no.go ./src/compiler.go ./src/common.go
-	$(GO) build ./src/no.go ./src/compiler.go ./src/common.go
+no: $(FILES)
+	$(GO) build $(FILES)
