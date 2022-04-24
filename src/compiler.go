@@ -1,5 +1,6 @@
 package main
 
+////////// GENERATOR //////////
 import (
 	"fmt"
 	"os"
@@ -130,3 +131,53 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 
 	f.Close()
 }
+///////////////////////////////
+
+/////////// PARSER ///////////
+
+func compileTokensIntoOps(tokens []Token) []Op {
+	var ops []Op
+
+	for i := range tokens {
+		token := tokens[i]
+
+		switch token.kind {
+		case TOKEN_INT:
+			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
+		case TOKEN_WORD:
+			switch {
+			case token.scontent == "+":
+				ops = append(ops, Op{op: OP_PLUS})
+			case token.scontent == "-":
+				ops = append(ops, Op{op: OP_MINUS})
+			case token.scontent == "*":
+				ops = append(ops, Op{op: OP_MULT})
+			case token.scontent == "divmod":
+				ops = append(ops, Op{op: OP_DIVMOD})
+			case token.scontent == "drop":
+				ops = append(ops, Op{op: OP_DROP})
+			case token.scontent == "print":
+				ops = append(ops, Op{op: OP_PRINT})
+			default:
+				fmt.Fprintf(os.Stderr, "ERROR: Unknown word: %s", token.scontent)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
+			os.Exit(1)
+		}
+	}
+	return ops
+}
+
+//////////////////////////////
+
+////////// COMPILER //////////
+
+func compileFileIntoOps(filepath string) []Op {
+	tokens := lexfile(filepath)
+	ops    := compileTokensIntoOps(tokens)
+	return ops
+}
+
+//////////////////////////////

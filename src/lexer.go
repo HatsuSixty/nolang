@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"unicode"
+	"strconv"
 	"os"
 )
 
@@ -34,14 +36,48 @@ type Token struct {
 //////////////
 
 func lexfile(filepath string) []Token {
+	tokens := []Token{}
+
 	source, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: Could not read content of file %s: %s\n", filepath, err)
 		os.Exit(3)
 	}
 
-	fmt.Print(string(source))
+	emptyloc := Location{l: 0, r: 0, c: 0}
 
-	tokens := []Token{}
+	var finalstring string
+	for i := range string(source) {
+		curchar := string(source[i])
+		if (unicode.IsSpace(rune(source[i]))) && (finalstring != "") {
+
+			switch {
+			case isNumber(finalstring):
+				i, err = strconv.Atoi(finalstring)
+				tokens = append(tokens, Token{kind: TOKEN_INT,  icontent: i,        loc: emptyloc})
+			case finalstring == "+":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "+",      loc: emptyloc})
+			case finalstring == "-":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "-",      loc: emptyloc})
+			case finalstring == "*":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "*",      loc: emptyloc})
+			case finalstring == "divmod":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "divmod", loc: emptyloc})
+			case finalstring == "drop":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "drop",   loc: emptyloc})
+			case finalstring == "print":
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "print",  loc: emptyloc})
+			default:
+				// ignore and treat as word, then, in the parsing phase, the compiler will
+				// do the error reporting
+				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: finalstring,  loc: emptyloc})
+			}
+
+			finalstring = ""
+		} else {
+			finalstring += curchar
+		}
+	}
+
 	return tokens
 }

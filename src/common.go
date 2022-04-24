@@ -2,8 +2,18 @@ package main
 
 import (
 	"fmt"
+	"unicode"
 	"os/exec"
 )
+
+func isNumber(str string) bool {
+	for i := range str {
+		if !unicode.IsNumber(rune(str[i])) {
+			return false
+		}
+	}
+	return true
+}
 
 func cmdRunEchoInfo(args string, silent bool) {
 	if !silent {
