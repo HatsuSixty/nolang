@@ -40,7 +40,7 @@ func lexfile(filepath string) []Token {
 		os.Exit(3)
 	}
 
-	fmt.Print(source)
+	fmt.Print(string(source))
 
 	tokens := []Token{}
 	return tokens
