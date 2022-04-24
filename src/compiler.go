@@ -138,8 +138,18 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
 
+	if !(TOKEN_COUNT == 2) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in compileTokensIntoOps\n")
+		os.Exit(1)
+	}
+
 	for i := range tokens {
 		token := tokens[i]
+
+		if !(OP_COUNT == 7) {
+			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
+			os.Exit(1)
+		}
 
 		switch token.kind {
 		case TOKEN_INT:

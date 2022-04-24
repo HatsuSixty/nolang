@@ -22,8 +22,9 @@ type Location struct {
 
 type TokenKind int
 const (
-	TOKEN_INT  TokenKind = iota
-	TOKEN_WORD TokenKind = iota
+	TOKEN_INT   TokenKind = iota
+	TOKEN_WORD  TokenKind = iota
+	TOKEN_COUNT TokenKind = iota
 )
 
 type Token struct {
@@ -45,6 +46,11 @@ func lexfile(filepath string) []Token {
 	}
 
 	emptyloc := Location{l: 0, r: 0, c: 0}
+
+	if !(TOKEN_COUNT == 2) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile()\n")
+		os.Exit(1)
+	}
 
 	var finalstring string
 	for i := range string(source) {
