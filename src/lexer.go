@@ -45,7 +45,9 @@ func lexfile(filepath string) []Token {
 		os.Exit(3)
 	}
 
-	emptyloc := Location{f: "./test.no", r: 0, c: 0}
+	f := filepath
+	r := 1
+	c := 1
 
 	if !(TOKEN_COUNT == 2) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile()\n")
@@ -53,22 +55,37 @@ func lexfile(filepath string) []Token {
 	}
 
 	var finalstring string
+
 	for i := range string(source) {
 		curchar := string(source[i])
+
 		if (unicode.IsSpace(rune(source[i]))) && (finalstring != "") {
 
 			switch {
 			case isNumber(finalstring):
 				i, err = strconv.Atoi(finalstring)
-				tokens = append(tokens, Token{kind: TOKEN_INT,   icontent: i,           loc: emptyloc})
+				tokens = append(tokens,
+					Token{kind: TOKEN_INT,
+						icontent: i,
+						loc: Location{f, r, c - len(finalstring)}})
+
 			case isWord(finalstring):
-				tokens = append(tokens, Token{kind: TOKEN_WORD,  scontent: finalstring, loc: emptyloc})
+				tokens = append(tokens,
+					Token{kind: TOKEN_WORD,
+						scontent: finalstring,
+						loc: Location{f, r, c - len(finalstring)}})
 			}
 
 			finalstring = ""
 		} else {
 			finalstring += curchar
 		}
+
+		if curchar == "\n" || curchar == "\r" {
+			r += 1
+			c  = 0
+		}
+		c += 1
 	}
 
 	return tokens
