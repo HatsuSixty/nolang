@@ -25,7 +25,6 @@ func isString(str string) bool {
 
 func isWord(word string) bool {
 	if isString(word) || isNumber(word) {
-		fmt.Println("no")
 		return false
 	}
 	return true
