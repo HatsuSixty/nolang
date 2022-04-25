@@ -6,6 +6,7 @@
 
 You will need to have the [go](https://go.dev) compiler installed.
 ```console
+$ echo "34 35 + print" > test.no
 $ make
 $ ./no
 ```
