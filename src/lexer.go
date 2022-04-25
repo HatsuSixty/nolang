@@ -11,9 +11,9 @@ import (
 /// Locations ///
 
 type Location struct {
-	l int
-	r int
-	c int
+	f string
+	r    int
+	c    int
 }
 
 /////////////////
@@ -45,7 +45,7 @@ func lexfile(filepath string) []Token {
 		os.Exit(3)
 	}
 
-	emptyloc := Location{l: 0, r: 0, c: 0}
+	emptyloc := Location{f: "./test.no", r: 0, c: 0}
 
 	if !(TOKEN_COUNT == 2) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile()\n")
@@ -60,23 +60,9 @@ func lexfile(filepath string) []Token {
 			switch {
 			case isNumber(finalstring):
 				i, err = strconv.Atoi(finalstring)
-				tokens = append(tokens, Token{kind: TOKEN_INT,  icontent: i,        loc: emptyloc})
-			case finalstring == "+":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "+",      loc: emptyloc})
-			case finalstring == "-":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "-",      loc: emptyloc})
-			case finalstring == "*":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "*",      loc: emptyloc})
-			case finalstring == "divmod":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "divmod", loc: emptyloc})
-			case finalstring == "drop":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "drop",   loc: emptyloc})
-			case finalstring == "print":
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: "print",  loc: emptyloc})
-			default:
-				// ignore and treat as word, then, in the parsing phase, the compiler will
-				// do the error reporting
-				tokens = append(tokens, Token{kind: TOKEN_WORD, scontent: finalstring,  loc: emptyloc})
+				tokens = append(tokens, Token{kind: TOKEN_INT,   icontent: i,           loc: emptyloc})
+			case isWord(finalstring):
+				tokens = append(tokens, Token{kind: TOKEN_WORD,  scontent: finalstring, loc: emptyloc})
 			}
 
 			finalstring = ""

@@ -15,6 +15,22 @@ func isNumber(str string) bool {
 	return true
 }
 
+func isString(str string) bool {
+	firstchar := ([]rune(str)[0])
+	if firstchar == '"' || firstchar == '\'' {
+		return true
+	}
+	return false
+}
+
+func isWord(word string) bool {
+	if isString(word) || isNumber(word) {
+		fmt.Println("no")
+		return false
+	}
+	return true
+}
+
 func cmdRunEchoInfo(args string, silent bool) {
 	if !silent {
 		fmt.Println("[CMD]", args)

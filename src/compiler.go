@@ -169,7 +169,9 @@ func compileTokensIntoOps(tokens []Token) []Op {
 			case token.scontent == "print":
 				ops = append(ops, Op{op: OP_PRINT})
 			default:
-				fmt.Fprintf(os.Stderr, "ERROR: Unknown word: %s", token.scontent)
+				loc := token.loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
+					token.scontent)
 				os.Exit(1)
 			}
 		default:
