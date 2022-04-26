@@ -59,6 +59,8 @@ func lexfile(filepath string) []Token {
 	for i := range string(source) {
 		curchar := string(source[i])
 
+		// TODO: if there is no space at the end of the file,
+		// it does not recognize "finalstring" as a word
 		if (unicode.IsSpace(rune(source[i]))) && (finalstring != "") {
 
 			switch {
