@@ -9,6 +9,7 @@ import (
 
 type OpType int
 const (
+	// basic operators
 	OP_PLUS     OpType = iota
 	OP_MINUS    OpType = iota
 	OP_MULT     OpType = iota
@@ -16,6 +17,16 @@ const (
 	OP_DROP     OpType = iota
 	OP_PRINT    OpType = iota
 	OP_PUSH_INT OpType = iota
+
+	// syscalls
+	OP_SYSCALL0 OpType = iota
+	OP_SYSCALL1 OpType = iota
+	OP_SYSCALL2 OpType = iota
+	OP_SYSCALL3 OpType = iota
+	OP_SYSCALL4 OpType = iota
+	OP_SYSCALL5 OpType = iota
+	OP_SYSCALL6 OpType = iota
+
 	OP_COUNT    OpType = iota
 )
 
@@ -33,7 +44,7 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 7) {
+	if !(OP_COUNT == 14) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -83,42 +94,98 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	for i := range program {
 		switch program[i].op {
 		case OP_PUSH_INT:
-			f.WriteString("    ;; -- push --\n"   )
+			f.WriteString("    ;; -- push --\n"     )
 			f.WriteString("    mov rax, " + strconv.FormatUint(uint64(program[i].operand), 10) + "\n")
-			f.WriteString("    push rax\n"        )
+			f.WriteString("    push rax\n"          )
 		case OP_PLUS:
-			f.WriteString("    ;; -- plus --\n"   )
-			f.WriteString("    pop rax\n"         )
-			f.WriteString("    pop rbx\n"         )
-			f.WriteString("    add rax, rbx\n"    )
-			f.WriteString("    push rax\n"        )
+			f.WriteString("    ;; -- plus --\n"     )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    add rax, rbx\n"      )
+			f.WriteString("    push rax\n"          )
 		case OP_MINUS:
-			f.WriteString("    ;; -- minus --\n"  )
-			f.WriteString("    pop rax\n"         )
-			f.WriteString("    pop rbx\n"         )
-			f.WriteString("    sub rbx, rax\n"    )
-			f.WriteString("    push rbx\n"        )
+			f.WriteString("    ;; -- minus --\n"    )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    sub rbx, rax\n"      )
+			f.WriteString("    push rbx\n"          )
 		case OP_MULT:
-			f.WriteString("    ;; -- mult --\n"   )
-			f.WriteString("    pop rax\n"         )
-			f.WriteString("    pop rbx\n"         )
-			f.WriteString("    mul rbx\n"         )
-			f.WriteString("    push rax\n"        )
+			f.WriteString("    ;; -- mult --\n"     )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    mul rbx\n"           )
+			f.WriteString("    push rax\n"          )
 		case OP_DIVMOD:
-			f.WriteString("    ;; -- divmod --\n" )
-			f.WriteString("    xor rdx, rdx\n"    )
-			f.WriteString("    pop rbx\n"         )
-			f.WriteString("    pop rax\n"         )
-			f.WriteString("    div rbx\n"         )
-			f.WriteString("    push rax\n"        )
-			f.WriteString("    push rdx\n"        )
+			f.WriteString("    ;; -- divmod --\n"   )
+			f.WriteString("    xor rdx, rdx\n"      )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    div rbx\n"           )
+			f.WriteString("    push rax\n"          )
+			f.WriteString("    push rdx\n"          )
 		case OP_DROP:
-			f.WriteString("    ;; -- drop --\n"   )
-			f.WriteString("    pop rax\n"         )
+			f.WriteString("    ;; -- drop --\n"     )
+			f.WriteString("    pop rax\n"           )
 		case OP_PRINT:
-			f.WriteString("    ;; -- print --\n"  )
-			f.WriteString("    pop rdi\n"         )
-			f.WriteString("    call print\n"      )
+			f.WriteString("    ;; -- print --\n"    )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    call print\n"        )
+		case OP_SYSCALL0:
+			f.WriteString("    ;; -- syscall0 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL1:
+			f.WriteString("    ;; -- syscall1 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL2:
+			f.WriteString("    ;; -- syscall2 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    pop rsi\n"           )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL3:
+			f.WriteString("    ;; -- syscall3 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    pop rsi\n"           )
+			f.WriteString("    pop rdx\n"           )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL4:
+			f.WriteString("    ;; -- syscall4 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    pop rsi\n"           )
+			f.WriteString("    pop rdx\n"           )
+			f.WriteString("    pop r10\n"           )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL5:
+			f.WriteString("    ;; -- syscall5 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    pop rsi\n"           )
+			f.WriteString("    pop rdx\n"           )
+			f.WriteString("    pop r10\n"           )
+			f.WriteString("    pop r8\n"            )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
+		case OP_SYSCALL6:
+			f.WriteString("    ;; -- syscall6 --\n" )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rdi\n"           )
+			f.WriteString("    pop rsi\n"           )
+			f.WriteString("    pop rdx\n"           )
+			f.WriteString("    pop r10\n"           )
+			f.WriteString("    pop r8\n"            )
+			f.WriteString("    pop r9\n"            )
+			f.WriteString("    syscall\n"           )
+			f.WriteString("    push rax\n"          )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -146,15 +213,15 @@ func compileTokensIntoOps(tokens []Token) []Op {
 	for i := range tokens {
 		token := tokens[i]
 
-		if !(OP_COUNT == 7) {
-			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
-			os.Exit(1)
-		}
-
 		switch token.kind {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
+			if !(OP_COUNT == 14) {
+				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
+				os.Exit(1)
+			}
+
 			switch {
 			case token.scontent == "+":
 				ops = append(ops, Op{op: OP_PLUS})
@@ -168,6 +235,20 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_DROP})
 			case token.scontent == "print":
 				ops = append(ops, Op{op: OP_PRINT})
+			case token.scontent == "syscall0":
+				ops = append(ops, Op{op: OP_SYSCALL0})
+			case token.scontent == "syscall1":
+				ops = append(ops, Op{op: OP_SYSCALL1})
+			case token.scontent == "syscall2":
+				ops = append(ops, Op{op: OP_SYSCALL2})
+			case token.scontent == "syscall3":
+				ops = append(ops, Op{op: OP_SYSCALL3})
+			case token.scontent == "syscall4":
+				ops = append(ops, Op{op: OP_SYSCALL4})
+			case token.scontent == "syscall5":
+				ops = append(ops, Op{op: OP_SYSCALL5})
+			case token.scontent == "syscall6":
+				ops = append(ops, Op{op: OP_SYSCALL6})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
