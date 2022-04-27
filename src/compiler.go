@@ -36,6 +36,8 @@ const (
 	OP_STORE8   OpType = iota
 	OP_LOAD16   OpType = iota
 	OP_STORE16  OpType = iota
+	OP_LOAD32   OpType = iota
+	OP_STORE32  OpType = iota
 
 	OP_COUNT    OpType = iota
 )
@@ -54,7 +56,7 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 19) {
+	if !(OP_COUNT == 21) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -221,6 +223,17 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop rax\n"           )
 			f.WriteString("    pop rbx\n"           )
 			f.WriteString("    mov [rax], bx\n"     )
+		case OP_LOAD32:
+			f.WriteString("    ;; -- load32 --\n"   )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    xor rbx, rbx\n"      )
+			f.WriteString("    mov ebx, [rax]\n"    )
+			f.WriteString("    push rbx\n"          )
+		case OP_STORE32:
+			f.WriteString("    ;; -- store32 --\n"  )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    mov [rax], ebx\n"    )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -254,7 +267,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 19) {
+			if !(OP_COUNT == 21) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -296,6 +309,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_LOAD16})
 			case token.scontent == "!16":
 				ops = append(ops, Op{op: OP_STORE16})
+			case token.scontent == "@32":
+				ops = append(ops, Op{op: OP_LOAD32})
+			case token.scontent == "!32":
+				ops = append(ops, Op{op: OP_STORE32})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
