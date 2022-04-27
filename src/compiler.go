@@ -8,7 +8,7 @@ import (
 )
 
 // should be enough for everyone
-const MEM_CAP uint64 = 64000
+const MEM_CAP int = 64000
 
 type OpType int
 const (
@@ -38,6 +38,8 @@ const (
 	OP_STORE16  OpType = iota
 	OP_LOAD32   OpType = iota
 	OP_STORE32  OpType = iota
+	OP_LOAD64   OpType = iota
+	OP_STORE64  OpType = iota
 
 	OP_COUNT    OpType = iota
 )
@@ -56,7 +58,7 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 21) {
+	if !(OP_COUNT == 23) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -107,7 +109,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		switch program[i].op {
 		case OP_PUSH_INT:
 			f.WriteString("    ;; -- push --\n"     )
-			f.WriteString("    mov rax, " + strconv.FormatUint(uint64(program[i].operand), 10) + "\n")
+			f.WriteString("    mov rax, " + strconv.Itoa(int(program[i].operand)) + "\n")
 			f.WriteString("    push rax\n"          )
 		case OP_PLUS:
 			f.WriteString("    ;; -- plus --\n"     )
@@ -234,6 +236,17 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop rax\n"           )
 			f.WriteString("    pop rbx\n"           )
 			f.WriteString("    mov [rax], ebx\n"    )
+		case OP_LOAD64:
+			f.WriteString("    ;; -- load64 --\n"   )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    xor rbx, rbx\n"      )
+			f.WriteString("    mov rbx, [rax]\n"    )
+			f.WriteString("    push rbx\n"          )
+		case OP_STORE64:
+			f.WriteString("    ;; -- store64 --\n"  )
+			f.WriteString("    pop rax\n"           )
+			f.WriteString("    pop rbx\n"           )
+			f.WriteString("    mov [rax], rbx\n"    )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -244,7 +257,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    mov rdi, 0\n"             )
 	f.WriteString("    syscall\n"                )
 	f.WriteString("segment .bss\n"               )
-	f.WriteString("mem: resb " + strconv.FormatUint(uint64(MEM_CAP), 10) + "\n")
+	f.WriteString("mem: resb " + strconv.Itoa(MEM_CAP) + "\n")
 
 	f.Close()
 }
@@ -267,7 +280,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 21) {
+			if !(OP_COUNT == 23) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -313,6 +326,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_LOAD32})
 			case token.scontent == "!32":
 				ops = append(ops, Op{op: OP_STORE32})
+			case token.scontent == "@64":
+				ops = append(ops, Op{op: OP_LOAD64})
+			case token.scontent == "!64":
+				ops = append(ops, Op{op: OP_STORE64})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
