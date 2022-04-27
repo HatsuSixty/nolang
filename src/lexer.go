@@ -40,6 +40,7 @@ func lexfile(filepath string) []Token {
 	tokens := []Token{}
 
 	source, err := ioutil.ReadFile(filepath)
+	source       = append(source, byte(' '))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: Could not read content of file %s: %s\n", filepath, err)
 		os.Exit(3)
@@ -59,8 +60,6 @@ func lexfile(filepath string) []Token {
 	for i := range string(source) {
 		curchar := string(source[i])
 
-		// TODO: if there is no space at the end of the file,
-		// it does not recognize "finalstring" as a word
 		if (unicode.IsSpace(rune(source[i]))) && (finalstring != "") {
 
 			switch {
