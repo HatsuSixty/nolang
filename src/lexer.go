@@ -79,7 +79,9 @@ func lexfile(filepath string) []Token {
 
 			finalstring = ""
 		} else {
-			finalstring += curchar
+			if !(unicode.IsSpace(rune(source[i]))) {
+				finalstring += curchar
+			}
 		}
 
 		if curchar == "\n" || curchar == "\r" {
