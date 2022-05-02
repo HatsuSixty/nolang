@@ -41,13 +41,17 @@ const (
 	OP_LOAD64   OpType = iota
 	OP_STORE64  OpType = iota
 
-	// logic
+	// logic (booleans)
 	OP_EQ       OpType = iota
 	OP_GT       OpType = iota
 	OP_LT       OpType = iota
 	OP_GE       OpType = iota
 	OP_LE       OpType = iota
 	OP_NE       OpType = iota
+
+	// logic (conditions and loops)
+	OP_IF       OpType = iota
+	OP_END      OpType = iota
 
 	OP_COUNT    OpType = iota
 )
@@ -66,7 +70,7 @@ func isError(err error) bool {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 29) {
+	if !(OP_COUNT == 31) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -75,6 +79,9 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	if isError(err) {
 		os.Exit(3)
 	}
+
+	// address count
+	ac := 0
 
 	f.WriteString("BITS 64\n"                              )
 	f.WriteString("segment .text\n"                        )
@@ -309,6 +316,15 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    cmp rax, rbx\n"       )
 			f.WriteString("    cmovne rcx, rdx\n"    )
 			f.WriteString("    push rcx\n"           )
+		case OP_IF:
+			f.WriteString("    ;; -- if --\n"        )
+			f.WriteString("    pop rax\n"            )
+			f.WriteString("    test rax, rax\n"      )
+			f.WriteString("    jz addr_" + strconv.Itoa(ac) + "\n")
+		case OP_END:
+			f.WriteString("    ;; -- end --\n"       )
+			f.WriteString("addr_" + strconv.Itoa(ac) + ":\n")
+			ac += 1
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -342,7 +358,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 29) {
+			if !(OP_COUNT == 31) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -404,6 +420,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_LE})
 			case token.scontent == "!=":
 				ops = append(ops, Op{op: OP_NE})
+			case token.scontent == "if":
+				ops = append(ops, Op{op: OP_IF})
+			case token.scontent == "end":
+				ops = append(ops, Op{op: OP_END})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
