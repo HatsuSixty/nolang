@@ -51,8 +51,8 @@ const (
 
 	// logic (conditions and loops)
 	OP_IF       OpType = iota
+	OP_ELSE     OpType = iota
 	OP_END      OpType = iota
-	// TODO: Add `else` (key)word
 
 	OP_COUNT    OpType = iota
 )
@@ -64,7 +64,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 31) {
+	if !(OP_COUNT == 32) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -312,6 +312,10 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop rax\n"            )
 			f.WriteString("    test rax, rax\n"      )
 			f.WriteString("    jz addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
+		case OP_ELSE:
+			f.WriteString("    ;; -- else --\n"      )
+			f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
+			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
 		case OP_END:
 			f.WriteString("    ;; -- end --\n"       )
 			f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
@@ -336,9 +340,10 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 func crossreferenceBlocks(program []Op) []Op {
 	mprogram := program
 	var stack []int
-	var if_ip int
+	var ifIp int
+	var blockIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 31) {
+		if !(OP_COUNT == 32) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -346,9 +351,15 @@ func crossreferenceBlocks(program []Op) []Op {
 		switch mprogram[i].op {
 		case OP_IF:
 			stack = append(stack, i)
+		case OP_ELSE:
+			stack, ifIp = popInt(stack)
+			mprogram[ifIp].operand = Operand(i + 1)
+			stack = append(stack, i)
 		case OP_END:
-			stack, if_ip = popInt(stack)
-			mprogram[if_ip].operand = Operand(i)
+			stack, blockIp = popInt(stack)
+			if (mprogram[blockIp].op == OP_IF) || (mprogram[blockIp].op == OP_ELSE) {
+				mprogram[blockIp].operand = Operand(i)
+			}
 		}
 	}
 	return mprogram
@@ -369,7 +380,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 31) {
+			if !(OP_COUNT == 32) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -433,6 +444,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_NE})
 			case token.scontent == "if":
 				ops = append(ops, Op{op: OP_IF})
+			case token.scontent == "else":
+				ops = append(ops, Op{op: OP_ELSE})
 			case token.scontent == "end":
 				ops = append(ops, Op{op: OP_END})
 			default:
