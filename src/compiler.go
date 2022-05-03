@@ -80,9 +80,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		os.Exit(3)
 	}
 
-	// address count
-	ac := 0
-
 	f.WriteString("BITS 64\n"                              )
 	f.WriteString("segment .text\n"                        )
 	f.WriteString("print:\n"                               )
@@ -320,11 +317,10 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    ;; -- if --\n"        )
 			f.WriteString("    pop rax\n"            )
 			f.WriteString("    test rax, rax\n"      )
-			f.WriteString("    jz addr_" + strconv.Itoa(ac) + "\n")
+			f.WriteString("    jz addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
 		case OP_END:
 			f.WriteString("    ;; -- end --\n"       )
-			f.WriteString("addr_" + strconv.Itoa(ac) + ":\n")
-			ac += 1
+			f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -342,6 +338,27 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 ///////////////////////////////
 
 /////////// PARSER ///////////
+
+func crossreferenceBlocks(program []Op) []Op {
+	mprogram := program
+	var stack []int
+	var if_ip int
+	for i := range mprogram {
+		if !(OP_COUNT == 31) {
+			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
+			os.Exit(1)
+		}
+
+		switch mprogram[i].op {
+		case OP_IF:
+			stack = append(stack, i)
+		case OP_END:
+			stack, if_ip = popInt(stack)
+			mprogram[if_ip].operand = Operand(i)
+		}
+	}
+	return mprogram
+}
 
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
@@ -444,7 +461,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 func compileFileIntoOps(filepath string) []Op {
 	tokens := lexfile(filepath)
-	ops    := compileTokensIntoOps(tokens)
+	ops    := crossreferenceBlocks(compileTokensIntoOps(tokens))
 	return ops
 }
 

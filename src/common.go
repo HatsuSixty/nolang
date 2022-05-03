@@ -30,6 +30,13 @@ func isWord(word string) bool {
 	return true
 }
 
+func popInt(stack []int) ([]int, int) {
+	mslice := stack
+	poppedVal := mslice[len(mslice)-1]
+	mslice = mslice[:len(mslice)-1]
+	return mslice, poppedVal
+}
+
 func cmdRunEchoInfo(args string, silent bool) {
 	if !silent {
 		fmt.Println("[CMD]", args)
