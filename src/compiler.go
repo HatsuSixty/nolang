@@ -431,7 +431,9 @@ func crossreferenceBlocks(program []Op) []Op {
 		}
 	}
 	if !(len(stack) == 0) {
-		loc := mprogram[len(stack)-1].loc
+		var unclosedBlock int
+		stack, unclosedBlock = popInt(stack)
+		loc := mprogram[unclosedBlock].loc
 		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", loc.f, loc.r, loc.c)
 		os.Exit(1)
 	}
