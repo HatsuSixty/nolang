@@ -41,6 +41,9 @@ const (
 	OP_LOAD64   OpType = iota
 	OP_STORE64  OpType = iota
 
+	// stack
+	OP_DUP      OpType = iota
+
 	// logic (booleans)
 	OP_EQ       OpType = iota
 	OP_GT       OpType = iota
@@ -64,7 +67,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 32) {
+	if !(OP_COUNT == 33) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -319,6 +322,11 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		case OP_END:
 			f.WriteString("    ;; -- end --\n"       )
 			f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
+		case OP_DUP:
+			f.WriteString("    ;; -- dup --\n"       )
+			f.WriteString("    pop rax\n"            )
+			f.WriteString("    push rax\n"           )
+			f.WriteString("    push rax\n"           )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -343,7 +351,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var ifIp int
 	var blockIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 32) {
+		if !(OP_COUNT == 33) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -380,7 +388,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 32) {
+			if !(OP_COUNT == 33) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -448,6 +456,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_ELSE})
 			case token.scontent == "end":
 				ops = append(ops, Op{op: OP_END})
+			case token.scontent == "dup":
+				ops = append(ops, Op{op: OP_DUP})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
