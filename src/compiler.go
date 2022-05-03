@@ -56,6 +56,8 @@ const (
 	OP_IF       OpType = iota
 	OP_ELSE     OpType = iota
 	OP_END      OpType = iota
+	OP_WHILE    OpType = iota
+	OP_DO       OpType = iota
 
 	OP_COUNT    OpType = iota
 )
@@ -67,7 +69,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 33) {
+	if !(OP_COUNT == 35) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -115,6 +117,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("global _start\n"                        )
 	f.WriteString("_start:\n"                              )
 	for i := range program {
+		f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
 		switch program[i].op {
 		case OP_PUSH_INT:
 			f.WriteString("    ;; -- push --\n"      )
@@ -318,10 +321,19 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		case OP_ELSE:
 			f.WriteString("    ;; -- else --\n"      )
 			f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
-			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
 		case OP_END:
 			f.WriteString("    ;; -- end --\n"       )
-			f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
+			if (i + 1) != int(program[i].operand) {
+				f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
+			}
+			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
+		case OP_WHILE:
+			f.WriteString("    ;; -- while --\n"     )
+		case OP_DO:
+			f.WriteString("    ;; -- do --\n"        )
+			f.WriteString("    pop rax\n"            )
+			f.WriteString("    test rax, rax\n"      )
+			f.WriteString("    jz addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
 		case OP_DUP:
 			f.WriteString("    ;; -- dup --\n"       )
 			f.WriteString("    pop rax\n"            )
@@ -350,8 +362,9 @@ func crossreferenceBlocks(program []Op) []Op {
 	var stack []int
 	var ifIp int
 	var blockIp int
+	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 33) {
+		if !(OP_COUNT == 35) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -365,9 +378,20 @@ func crossreferenceBlocks(program []Op) []Op {
 			stack = append(stack, i)
 		case OP_END:
 			stack, blockIp = popInt(stack)
-			if (mprogram[blockIp].op == OP_IF) || (mprogram[blockIp].op == OP_ELSE) {
+			switch {
+			case (mprogram[blockIp].op == OP_IF) || (mprogram[blockIp].op == OP_ELSE):
 				mprogram[blockIp].operand = Operand(i)
+				mprogram[i].operand = Operand(i + 1)
+			case mprogram[blockIp].op == OP_DO:
+				mprogram[i].operand       = mprogram[blockIp].operand
+				mprogram[blockIp].operand = Operand(i + 1)
 			}
+		case OP_WHILE:
+			stack = append(stack, i)
+		case OP_DO:
+			stack, whileIp = popInt(stack)
+			program[i].operand = Operand(whileIp)
+			stack = append(stack, i)
 		}
 	}
 	return mprogram
@@ -388,7 +412,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 33) {
+			if !(OP_COUNT == 35) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -456,6 +480,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_ELSE})
 			case token.scontent == "end":
 				ops = append(ops, Op{op: OP_END})
+			case token.scontent == "while":
+				ops = append(ops, Op{op: OP_WHILE})
+			case token.scontent == "do":
+				ops = append(ops, Op{op: OP_DO})
 			case token.scontent == "dup":
 				ops = append(ops, Op{op: OP_DUP})
 			default:
