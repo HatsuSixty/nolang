@@ -52,6 +52,7 @@ const (
 	// logic (conditions and loops)
 	OP_IF       OpType = iota
 	OP_END      OpType = iota
+	// TODO: Add `else` (key)word
 
 	OP_COUNT    OpType = iota
 )
