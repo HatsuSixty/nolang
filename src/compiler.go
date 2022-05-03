@@ -66,6 +66,7 @@ type Operand int
 type Op struct {
 	op      OpType
 	operand Operand
+	loc     Location // only for operations that has a token equivalent
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
@@ -375,11 +376,33 @@ func crossreferenceBlocks(program []Op) []Op {
 		case OP_IF:
 			stack = append(stack, i)
 		case OP_ELSE:
+			if !(len(stack) > 0) {
+				loc := mprogram[i].loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
+					loc.f, loc.r, loc.c)
+				os.Exit(1)
+			}
+
 			stack, ifIp = popInt(stack)
+			if !(mprogram[ifIp].op == OP_IF) {
+				loc := mprogram[i].loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
+					loc.f, loc.r, loc.c)
+				os.Exit(1)
+			}
+
 			mprogram[ifIp].operand = Operand(i + 1)
 			stack = append(stack, i)
 		case OP_END:
+			if !(len(stack) > 0) {
+				loc := mprogram[i].loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `end` does not have any block to close\n",
+					loc.f, loc.r, loc.c)
+				os.Exit(1)
+			}
+
 			stack, blockIp = popInt(stack)
+
 			switch {
 			case (mprogram[blockIp].op == OP_IF) || (mprogram[blockIp].op == OP_ELSE):
 				mprogram[blockIp].operand = Operand(i)
@@ -387,15 +410,32 @@ func crossreferenceBlocks(program []Op) []Op {
 			case mprogram[blockIp].op == OP_DO:
 				mprogram[i].operand       = mprogram[blockIp].operand
 				mprogram[blockIp].operand = Operand(i + 1)
+			default:
+				loc := mprogram[i].loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else` or `do` is not allowed\n", loc.f, loc.r, loc.c)
+				os.Exit(1)
 			}
 		case OP_WHILE:
 			stack = append(stack, i)
 		case OP_DO:
+			if !(len(stack) > 0) {
+				loc := mprogram[i].loc
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `do` does not have any block to close\n",
+					loc.f, loc.r, loc.c)
+				os.Exit(1)
+			}
+
 			stack, whileIp = popInt(stack)
 			program[i].operand = Operand(whileIp)
 			stack = append(stack, i)
 		}
 	}
+	if !(len(stack) == 0) {
+		loc := mprogram[len(stack)-1].loc
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", loc.f, loc.r, loc.c)
+		os.Exit(1)
+	}
+
 	return mprogram
 }
 
@@ -412,7 +452,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 		switch token.kind {
 		case TOKEN_INT:
-			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent)})
+			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_WORD:
 			if !(OP_COUNT == 35) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
@@ -421,73 +461,73 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 			switch {
 			case token.scontent == "+":
-				ops = append(ops, Op{op: OP_PLUS})
+				ops = append(ops, Op{op: OP_PLUS, loc: token.loc})
 			case token.scontent == "-":
-				ops = append(ops, Op{op: OP_MINUS})
+				ops = append(ops, Op{op: OP_MINUS, loc: token.loc})
 			case token.scontent == "*":
-				ops = append(ops, Op{op: OP_MULT})
+				ops = append(ops, Op{op: OP_MULT, loc: token.loc})
 			case token.scontent == "divmod":
-				ops = append(ops, Op{op: OP_DIVMOD})
+				ops = append(ops, Op{op: OP_DIVMOD, loc: token.loc})
 			case token.scontent == "drop":
-				ops = append(ops, Op{op: OP_DROP})
+				ops = append(ops, Op{op: OP_DROP, loc: token.loc})
 			case token.scontent == "print":
-				ops = append(ops, Op{op: OP_PRINT})
+				ops = append(ops, Op{op: OP_PRINT, loc: token.loc})
 			case token.scontent == "syscall0":
-				ops = append(ops, Op{op: OP_SYSCALL0})
+				ops = append(ops, Op{op: OP_SYSCALL0, loc: token.loc})
 			case token.scontent == "syscall1":
-				ops = append(ops, Op{op: OP_SYSCALL1})
+				ops = append(ops, Op{op: OP_SYSCALL1, loc: token.loc})
 			case token.scontent == "syscall2":
-				ops = append(ops, Op{op: OP_SYSCALL2})
+				ops = append(ops, Op{op: OP_SYSCALL2, loc: token.loc})
 			case token.scontent == "syscall3":
-				ops = append(ops, Op{op: OP_SYSCALL3})
+				ops = append(ops, Op{op: OP_SYSCALL3, loc: token.loc})
 			case token.scontent == "syscall4":
-				ops = append(ops, Op{op: OP_SYSCALL4})
+				ops = append(ops, Op{op: OP_SYSCALL4, loc: token.loc})
 			case token.scontent == "syscall5":
-				ops = append(ops, Op{op: OP_SYSCALL5})
+				ops = append(ops, Op{op: OP_SYSCALL5, loc: token.loc})
 			case token.scontent == "syscall6":
-				ops = append(ops, Op{op: OP_SYSCALL6})
+				ops = append(ops, Op{op: OP_SYSCALL6, loc: token.loc})
 			case token.scontent == "mem":
-				ops = append(ops, Op{op: OP_MEM})
+				ops = append(ops, Op{op: OP_MEM, loc: token.loc})
 			case token.scontent == "@8":
-				ops = append(ops, Op{op: OP_LOAD8})
+				ops = append(ops, Op{op: OP_LOAD8, loc: token.loc})
 			case token.scontent == "!8":
-				ops = append(ops, Op{op: OP_STORE8})
+				ops = append(ops, Op{op: OP_STORE8, loc: token.loc})
 			case token.scontent == "@16":
-				ops = append(ops, Op{op: OP_LOAD16})
+				ops = append(ops, Op{op: OP_LOAD16, loc: token.loc})
 			case token.scontent == "!16":
-				ops = append(ops, Op{op: OP_STORE16})
+				ops = append(ops, Op{op: OP_STORE16, loc: token.loc})
 			case token.scontent == "@32":
-				ops = append(ops, Op{op: OP_LOAD32})
+				ops = append(ops, Op{op: OP_LOAD32, loc: token.loc})
 			case token.scontent == "!32":
-				ops = append(ops, Op{op: OP_STORE32})
+				ops = append(ops, Op{op: OP_STORE32, loc: token.loc})
 			case token.scontent == "@64":
-				ops = append(ops, Op{op: OP_LOAD64})
+				ops = append(ops, Op{op: OP_LOAD64, loc: token.loc})
 			case token.scontent == "!64":
-				ops = append(ops, Op{op: OP_STORE64})
+				ops = append(ops, Op{op: OP_STORE64, loc: token.loc})
 			case token.scontent == "=":
-				ops = append(ops, Op{op: OP_EQ})
+				ops = append(ops, Op{op: OP_EQ, loc: token.loc})
 			case token.scontent == ">":
-				ops = append(ops, Op{op: OP_GT})
+				ops = append(ops, Op{op: OP_GT, loc: token.loc})
 			case token.scontent == "<":
-				ops = append(ops, Op{op: OP_LT})
+				ops = append(ops, Op{op: OP_LT, loc: token.loc})
 			case token.scontent == ">=":
-				ops = append(ops, Op{op: OP_GE})
+				ops = append(ops, Op{op: OP_GE, loc: token.loc})
 			case token.scontent == "<=":
-				ops = append(ops, Op{op: OP_LE})
+				ops = append(ops, Op{op: OP_LE, loc: token.loc})
 			case token.scontent == "!=":
-				ops = append(ops, Op{op: OP_NE})
+				ops = append(ops, Op{op: OP_NE, loc: token.loc})
 			case token.scontent == "if":
-				ops = append(ops, Op{op: OP_IF})
+				ops = append(ops, Op{op: OP_IF, loc: token.loc})
 			case token.scontent == "else":
-				ops = append(ops, Op{op: OP_ELSE})
+				ops = append(ops, Op{op: OP_ELSE, loc: token.loc})
 			case token.scontent == "end":
-				ops = append(ops, Op{op: OP_END})
+				ops = append(ops, Op{op: OP_END, loc: token.loc})
 			case token.scontent == "while":
-				ops = append(ops, Op{op: OP_WHILE})
+				ops = append(ops, Op{op: OP_WHILE, loc: token.loc})
 			case token.scontent == "do":
-				ops = append(ops, Op{op: OP_DO})
+				ops = append(ops, Op{op: OP_DO, loc: token.loc})
 			case token.scontent == "dup":
-				ops = append(ops, Op{op: OP_DUP})
+				ops = append(ops, Op{op: OP_DUP, loc: token.loc})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
