@@ -326,7 +326,9 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			if (i + 1) != int(program[i].operand) {
 				f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
 			}
-			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
+			if len(program) <= (i + 1) {
+				f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
+			}
 		case OP_WHILE:
 			f.WriteString("    ;; -- while --\n"     )
 		case OP_DO:
