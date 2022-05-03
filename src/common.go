@@ -6,6 +6,13 @@ import (
 	"os/exec"
 )
 
+func isError(err error) bool {
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return (err != nil)
+}
+
 func isNumber(str string) bool {
 	for i := range str {
 		if !unicode.IsNumber(rune(str[i])) {

@@ -63,13 +63,6 @@ type Op struct {
 	operand Operand
 }
 
-func isError(err error) bool {
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	return (err != nil)
-}
-
 func generateYasmLinux_x86_64(program []Op, output string) {
 	if !(OP_COUNT == 31) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
