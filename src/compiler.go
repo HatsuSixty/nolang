@@ -17,7 +17,6 @@ const (
 	OP_MINUS    OpType = iota
 	OP_MULT     OpType = iota
 	OP_DIVMOD   OpType = iota
-	OP_DROP     OpType = iota
 	OP_PRINT    OpType = iota
 	OP_PUSH_INT OpType = iota
 
@@ -43,6 +42,8 @@ const (
 
 	// stack
 	OP_DUP      OpType = iota
+	OP_DROP     OpType = iota
+	OP_SWAP     OpType = iota
 
 	// logic (booleans)
 	OP_EQ       OpType = iota
@@ -70,7 +71,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 35) {
+	if !(OP_COUNT == 36) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -150,9 +151,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    div rbx\n"            )
 			f.WriteString("    push rax\n"           )
 			f.WriteString("    push rdx\n"           )
-		case OP_DROP:
-			f.WriteString("    ;; -- drop --\n"      )
-			f.WriteString("    pop rax\n"            )
 		case OP_PRINT:
 			f.WriteString("    ;; -- print --\n"     )
 			f.WriteString("    pop rdi\n"            )
@@ -342,6 +340,15 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop rax\n"            )
 			f.WriteString("    push rax\n"           )
 			f.WriteString("    push rax\n"           )
+		case OP_DROP:
+			f.WriteString("    ;; -- drop --\n"      )
+			f.WriteString("    pop rax\n"            )
+		case OP_SWAP:
+			f.WriteString("    ;; -- swap --\n"      )
+			f.WriteString("    pop rax\n"            )
+			f.WriteString("    pop rbx\n"            )
+			f.WriteString("    push rax\n"           )
+			f.WriteString("    push rbx\n"           )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(2)
@@ -367,7 +374,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 35) {
+		if !(OP_COUNT == 36) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -456,7 +463,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 35) {
+			if !(OP_COUNT == 36) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -470,8 +477,6 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_MULT, loc: token.loc})
 			case token.scontent == "divmod":
 				ops = append(ops, Op{op: OP_DIVMOD, loc: token.loc})
-			case token.scontent == "drop":
-				ops = append(ops, Op{op: OP_DROP, loc: token.loc})
 			case token.scontent == "print":
 				ops = append(ops, Op{op: OP_PRINT, loc: token.loc})
 			case token.scontent == "syscall0":
@@ -530,6 +535,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_DO, loc: token.loc})
 			case token.scontent == "dup":
 				ops = append(ops, Op{op: OP_DUP, loc: token.loc})
+			case token.scontent == "drop":
+				ops = append(ops, Op{op: OP_DROP, loc: token.loc})
+			case token.scontent == "swap":
+				ops = append(ops, Op{op: OP_SWAP, loc: token.loc})
 			default:
 				loc := token.loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
