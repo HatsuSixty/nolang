@@ -541,7 +541,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 			os.Exit(1)
 		}
 	}
-	return ops
+	return crossreferenceBlocks(ops)
 }
 
 //////////////////////////////
@@ -550,7 +550,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 func compileFileIntoOps(filepath string) []Op {
 	tokens := lexfile(filepath)
-	ops    := crossreferenceBlocks(compileTokensIntoOps(tokens))
+	ops    := compileTokensIntoOps(tokens)
 	return ops
 }
 
