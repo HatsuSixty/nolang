@@ -656,8 +656,11 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					curmac := macros[m]
 
 					if curmac.name == token.scontent {
-						tokens = append(tokens, curmac.toks...)
+						toks1 := tokens[:i]
+						toks2 := tokens[i:]
+						tokens = append(append(toks1, curmac.toks...), toks2...)
 						err = false
+						break
 					}
 				}
 
