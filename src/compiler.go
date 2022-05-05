@@ -627,8 +627,11 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 				i += 2
 
+				blockStack := []int{}
+				pop        := 0
+				if pop == 0 {}
 				for i < len(tokens) {
-					if tokens[i].scontent == "end" {
+					if tokens[i].scontent == "end" && len(blockStack) == 0 {
 						macroClosed = true
 						break
 					}
@@ -637,6 +640,15 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
 							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 						os.Exit(1)
+					}
+
+					switch {
+					case (tokens[i].scontent == "if")  ||
+						(tokens[i].scontent == "else") ||
+						(tokens[i].scontent == "do"):
+						blockStack = append(blockStack, 1)
+					case tokens[i].scontent == "end":
+						blockStack, pop = popInt(blockStack)
 					}
 
 					macroToks = append(macroToks, tokens[i])
@@ -656,9 +668,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					curmac := macros[m]
 
 					if curmac.name == token.scontent {
-						toks1 := tokens[:i]
-						toks2 := tokens[i:]
-						tokens = append(append(toks1, curmac.toks...), toks2...)
+						fmt.Fprintf(os.Stderr, "TODO: Expanding macros is not implemented yet\n")
+						os.Exit(1)
 						err = false
 						break
 					}
