@@ -490,9 +490,8 @@ type Macro struct {
 	toks []Token
 	name string
 }
-
 func compileTokensIntoOps(tokens []Token) []Op {
-	var ops []Op
+	var ops    []Op
 	var macros []Macro
 
 	if !(TOKEN_COUNT == 2) {
