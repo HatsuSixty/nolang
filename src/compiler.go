@@ -617,6 +617,14 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					os.Exit(1)
 				}
 
+				for m := range macros {
+					if macros[m].name == macroName {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
+							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
+						os.Exit(1)
+					}
+				}
+
 				i += 2
 
 				for i < len(tokens) {
@@ -626,7 +634,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					}
 
 					if tokens[i].scontent == "macro" {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n", tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
+							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 						os.Exit(1)
 					}
 
