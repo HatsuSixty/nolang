@@ -457,7 +457,7 @@ func crossreferenceBlocks(program []Op) []Op {
 				mprogram[blockIp].operand = Operand(i + 1)
 			default:
 				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else` or `do` is not allowed\n", loc.f, loc.r, loc.c)
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do` or `macro` is not allowed\n", loc.f, loc.r, loc.c)
 				os.Exit(1)
 			}
 		case OP_WHILE:
@@ -486,15 +486,22 @@ func crossreferenceBlocks(program []Op) []Op {
 	return mprogram
 }
 
+type Macro struct {
+	toks []Token
+	name string
+}
+
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
+	var macros []Macro
 
 	if !(TOKEN_COUNT == 2) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in compileTokensIntoOps\n")
 		os.Exit(1)
 	}
 
-	for i := range tokens {
+	i := 0
+	for i < len(tokens) {
 		token := tokens[i]
 
 		switch token.kind {
@@ -585,16 +592,79 @@ func compileTokensIntoOps(tokens []Token) []Op {
 				ops = append(ops, Op{op: OP_2DUP, loc: token.loc})
 			case token.scontent == "2swap":
 				ops = append(ops, Op{op: OP_2SWAP, loc: token.loc})
+			case token.scontent == "macro":
+				if !((len(tokens)-1) >= i + 1) {
+					loc := token.loc
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
+						loc.f, loc.r, loc.c)
+					os.Exit(1)
+				}
+
+				if !(tokens[i + 1].kind == TOKEN_WORD) {
+					loc := tokens[i + 1].loc
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name to be an word\n",
+						loc.f, loc.r, loc.c)
+					os.Exit(1)
+				}
+
+				macroKeyLoc := token.loc
+				macroName   := tokens[i + 1].scontent
+				macroToks   := []Token{}
+				macroClosed := false
+
+				if in(macroName, builtinWordsNames) {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
+						tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
+					os.Exit(1)
+				}
+
+				i += 2
+
+				for i < len(tokens) {
+					if tokens[i].scontent == "end" {
+						macroClosed = true
+						break
+					}
+
+					if tokens[i].scontent == "macro" {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n", tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+						os.Exit(1)
+					}
+
+					macroToks = append(macroToks, tokens[i])
+					i += 1
+				}
+
+				macros = append(macros, Macro{name: macroName, toks: macroToks})
+
+				if !macroClosed {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
+					os.Exit(1)
+				}
 			default:
-				loc := token.loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
-					token.scontent)
-				os.Exit(1)
+				err := true
+
+				for m := range macros {
+					curmac := macros[m]
+
+					if curmac.name == token.scontent {
+						tokens = append(tokens, curmac.toks...)
+						err = false
+					}
+				}
+
+				if err {
+					loc := token.loc
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
+						token.scontent)
+					os.Exit(1)
+				}
 			}
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
 			os.Exit(1)
 		}
+		i += 1
 	}
 	return crossreferenceBlocks(ops)
 }
@@ -603,7 +673,55 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 ////////// COMPILER //////////
 
+var builtinWordsNames []string = []string{
+	"+",
+	"-",
+	"*",
+	"divmod",
+	"print",
+	"syscall0",
+	"syscall1",
+	"syscall2",
+	"syscall3",
+	"syscall4",
+	"syscall5",
+	"syscall6",
+	"mem",
+	"@8",
+	"!8",
+	"@16",
+	"!16",
+	"@32",
+	"!32",
+	"@64",
+	"!64",
+	"dup",
+	"drop",
+	"swap",
+	"over",
+	"rot",
+	"2dup",
+	"2swap",
+	"=",
+	">",
+	"<",
+	">=",
+	"<=",
+	"!=",
+	"if",
+	"else",
+	"end",
+	"while",
+	"do",
+	"macro",
+}
+
 func compileFileIntoOps(filepath string) []Op {
+	if !(OP_COUNT == 40) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
+		os.Exit(1)
+	}
+
 	tokens := lexfile(filepath)
 	ops    := compileTokensIntoOps(tokens)
 	return ops

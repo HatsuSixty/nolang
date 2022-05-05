@@ -44,6 +44,15 @@ func popInt(stack []int) ([]int, int) {
 	return mslice, poppedVal
 }
 
+func in(str string, slc []string) bool {
+	for i := range slc {
+		if slc[i] == str {
+			return true
+		}
+	}
+	return false
+}
+
 func cmdRunEchoInfo(args string, silent bool) {
 	if !silent {
 		fmt.Println("[CMD]", args)
