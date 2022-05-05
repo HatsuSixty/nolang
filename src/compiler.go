@@ -8,8 +8,9 @@ import (
 )
 
 // should be enough for everyone
-const MEM_CAP int = 64000
+const MEM_CAP int = 640000
 
+// operations
 type OpType int
 const (
 	// basic operators
