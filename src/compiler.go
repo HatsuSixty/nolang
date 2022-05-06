@@ -586,6 +586,38 @@ func tokenWordAsOp(token Token) Op {
 	}
 }
 
+func expandMacro(macro Macro) []Op {
+	opers := []Op{}
+	for m := range macro.toks {
+		optoadd := tokenWordAsOp(macro.toks[m])
+		if optoadd.op == OP_ERR {
+			switch {
+			case macro.toks[m].kind == TOKEN_INT:
+				opers = append(opers, Op{op: OP_PUSH_INT,
+					operand: Operand(macro.toks[m].icontent),
+					loc: macro.toks[m].loc})
+			default:
+				err := true
+				for mm := range macros {
+					mn := macros[mm].name
+					if mn == macro.toks[m].scontent {
+						opers = append(opers, expandMacro(macros[mm])...)
+						err = false
+						break
+					}
+				}
+				if err {
+					fmt.Fprintf(os.Stderr, "ERROR: Unreachable (macro expansion)\n")
+					os.Exit(2)
+				}
+			}
+		} else {
+			opers = append(opers, optoadd)
+		}
+	}
+	return opers
+}
+
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops    []Op
 
@@ -687,8 +719,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						curmac := macros[m]
 
 						if curmac.name == token.scontent {
-							fmt.Fprintf(os.Stderr, "TODO: Expanding macros is not implemented yet\n")
-							os.Exit(1)
+							ops = append(ops, expandMacro(curmac)...)
 							err = false
 							break
 						}
