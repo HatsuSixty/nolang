@@ -391,7 +391,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    push rcx\n"           )
 			f.WriteString("    push rdx\n"           )
 		default:
-			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
+			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
 		}
 	}
@@ -493,9 +493,101 @@ type Macro struct {
 	toks []Token
 	name string
 }
+
+var macros []Macro
+
+func tokenWordAsOp(token Token) Op {
+	if !(OP_COUNT == 41) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
+		os.Exit(1)
+	}
+
+	switch {
+	case token.scontent == "+":
+		return Op{op: OP_PLUS, loc: token.loc}
+	case token.scontent == "-":
+		return Op{op: OP_MINUS, loc: token.loc}
+	case token.scontent == "*":
+		return Op{op: OP_MULT, loc: token.loc}
+	case token.scontent == "divmod":
+		return Op{op: OP_DIVMOD, loc: token.loc}
+	case token.scontent == "print":
+		return Op{op: OP_PRINT, loc: token.loc}
+	case token.scontent == "syscall0":
+		return Op{op: OP_SYSCALL0, loc: token.loc}
+	case token.scontent == "syscall1":
+		return Op{op: OP_SYSCALL1, loc: token.loc}
+	case token.scontent == "syscall2":
+		return Op{op: OP_SYSCALL2, loc: token.loc}
+	case token.scontent == "syscall3":
+		return Op{op: OP_SYSCALL3, loc: token.loc}
+	case token.scontent == "syscall4":
+		return Op{op: OP_SYSCALL4, loc: token.loc}
+	case token.scontent == "syscall5":
+		return Op{op: OP_SYSCALL5, loc: token.loc}
+	case token.scontent == "syscall6":
+		return Op{op: OP_SYSCALL6, loc: token.loc}
+	case token.scontent == "mem":
+		return Op{op: OP_MEM, loc: token.loc}
+	case token.scontent == "@8":
+		return Op{op: OP_LOAD8, loc: token.loc}
+	case token.scontent == "!8":
+		return Op{op: OP_STORE8, loc: token.loc}
+	case token.scontent == "@16":
+		return Op{op: OP_LOAD16, loc: token.loc}
+	case token.scontent == "!16":
+		return Op{op: OP_STORE16, loc: token.loc}
+	case token.scontent == "@32":
+		return Op{op: OP_LOAD32, loc: token.loc}
+	case token.scontent == "!32":
+		return Op{op: OP_STORE32, loc: token.loc}
+	case token.scontent == "@64":
+		return Op{op: OP_LOAD64, loc: token.loc}
+	case token.scontent == "!64":
+		return Op{op: OP_STORE64, loc: token.loc}
+	case token.scontent == "=":
+		return Op{op: OP_EQ, loc: token.loc}
+	case token.scontent == ">":
+		return Op{op: OP_GT, loc: token.loc}
+	case token.scontent == "<":
+		return Op{op: OP_LT, loc: token.loc}
+	case token.scontent == ">=":
+		return Op{op: OP_GE, loc: token.loc}
+	case token.scontent == "<=":
+		return Op{op: OP_LE, loc: token.loc}
+	case token.scontent == "!=":
+		return Op{op: OP_NE, loc: token.loc}
+	case token.scontent == "if":
+		return Op{op: OP_IF, loc: token.loc}
+	case token.scontent == "else":
+		return Op{op: OP_ELSE, loc: token.loc}
+	case token.scontent == "end":
+		return Op{op: OP_END, loc: token.loc}
+	case token.scontent == "while":
+		return Op{op: OP_WHILE, loc: token.loc}
+	case token.scontent == "do":
+		return Op{op: OP_DO, loc: token.loc}
+	case token.scontent == "dup":
+		return Op{op: OP_DUP, loc: token.loc}
+	case token.scontent == "drop":
+		return Op{op: OP_DROP, loc: token.loc}
+	case token.scontent == "swap":
+		return Op{op: OP_SWAP, loc: token.loc}
+	case token.scontent == "over":
+		return Op{op: OP_OVER, loc: token.loc}
+	case token.scontent == "rot":
+		return Op{op: OP_ROT, loc: token.loc}
+	case token.scontent == "2dup":
+		return Op{op: OP_2DUP, loc: token.loc}
+	case token.scontent == "2swap":
+		return Op{op: OP_2SWAP, loc: token.loc}
+	default:
+		return Op{op: OP_ERR}
+	}
+}
+
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops    []Op
-	var macros []Macro
 
 	if !(TOKEN_COUNT == 2) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in compileTokensIntoOps\n")
@@ -510,188 +602,110 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 41) {
-				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
-				os.Exit(1)
-			}
+			optoadd := tokenWordAsOp(token)
+			if optoadd.op == OP_ERR {
+				switch {
+				case token.scontent == "macro":
+					if !((len(tokens)-1) >= i + 1) {
+						loc := token.loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
 
-			switch {
-			case token.scontent == "+":
-				ops = append(ops, Op{op: OP_PLUS, loc: token.loc})
-			case token.scontent == "-":
-				ops = append(ops, Op{op: OP_MINUS, loc: token.loc})
-			case token.scontent == "*":
-				ops = append(ops, Op{op: OP_MULT, loc: token.loc})
-			case token.scontent == "divmod":
-				ops = append(ops, Op{op: OP_DIVMOD, loc: token.loc})
-			case token.scontent == "print":
-				ops = append(ops, Op{op: OP_PRINT, loc: token.loc})
-			case token.scontent == "syscall0":
-				ops = append(ops, Op{op: OP_SYSCALL0, loc: token.loc})
-			case token.scontent == "syscall1":
-				ops = append(ops, Op{op: OP_SYSCALL1, loc: token.loc})
-			case token.scontent == "syscall2":
-				ops = append(ops, Op{op: OP_SYSCALL2, loc: token.loc})
-			case token.scontent == "syscall3":
-				ops = append(ops, Op{op: OP_SYSCALL3, loc: token.loc})
-			case token.scontent == "syscall4":
-				ops = append(ops, Op{op: OP_SYSCALL4, loc: token.loc})
-			case token.scontent == "syscall5":
-				ops = append(ops, Op{op: OP_SYSCALL5, loc: token.loc})
-			case token.scontent == "syscall6":
-				ops = append(ops, Op{op: OP_SYSCALL6, loc: token.loc})
-			case token.scontent == "mem":
-				ops = append(ops, Op{op: OP_MEM, loc: token.loc})
-			case token.scontent == "@8":
-				ops = append(ops, Op{op: OP_LOAD8, loc: token.loc})
-			case token.scontent == "!8":
-				ops = append(ops, Op{op: OP_STORE8, loc: token.loc})
-			case token.scontent == "@16":
-				ops = append(ops, Op{op: OP_LOAD16, loc: token.loc})
-			case token.scontent == "!16":
-				ops = append(ops, Op{op: OP_STORE16, loc: token.loc})
-			case token.scontent == "@32":
-				ops = append(ops, Op{op: OP_LOAD32, loc: token.loc})
-			case token.scontent == "!32":
-				ops = append(ops, Op{op: OP_STORE32, loc: token.loc})
-			case token.scontent == "@64":
-				ops = append(ops, Op{op: OP_LOAD64, loc: token.loc})
-			case token.scontent == "!64":
-				ops = append(ops, Op{op: OP_STORE64, loc: token.loc})
-			case token.scontent == "=":
-				ops = append(ops, Op{op: OP_EQ, loc: token.loc})
-			case token.scontent == ">":
-				ops = append(ops, Op{op: OP_GT, loc: token.loc})
-			case token.scontent == "<":
-				ops = append(ops, Op{op: OP_LT, loc: token.loc})
-			case token.scontent == ">=":
-				ops = append(ops, Op{op: OP_GE, loc: token.loc})
-			case token.scontent == "<=":
-				ops = append(ops, Op{op: OP_LE, loc: token.loc})
-			case token.scontent == "!=":
-				ops = append(ops, Op{op: OP_NE, loc: token.loc})
-			case token.scontent == "if":
-				ops = append(ops, Op{op: OP_IF, loc: token.loc})
-			case token.scontent == "else":
-				ops = append(ops, Op{op: OP_ELSE, loc: token.loc})
-			case token.scontent == "end":
-				ops = append(ops, Op{op: OP_END, loc: token.loc})
-			case token.scontent == "while":
-				ops = append(ops, Op{op: OP_WHILE, loc: token.loc})
-			case token.scontent == "do":
-				ops = append(ops, Op{op: OP_DO, loc: token.loc})
-			case token.scontent == "dup":
-				ops = append(ops, Op{op: OP_DUP, loc: token.loc})
-			case token.scontent == "drop":
-				ops = append(ops, Op{op: OP_DROP, loc: token.loc})
-			case token.scontent == "swap":
-				ops = append(ops, Op{op: OP_SWAP, loc: token.loc})
-			case token.scontent == "over":
-				ops = append(ops, Op{op: OP_OVER, loc: token.loc})
-			case token.scontent == "rot":
-				ops = append(ops, Op{op: OP_ROT, loc: token.loc})
-			case token.scontent == "2dup":
-				ops = append(ops, Op{op: OP_2DUP, loc: token.loc})
-			case token.scontent == "2swap":
-				ops = append(ops, Op{op: OP_2SWAP, loc: token.loc})
-			case token.scontent == "macro":
-				if !((len(tokens)-1) >= i + 1) {
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
+					if !(tokens[i + 1].kind == TOKEN_WORD) {
+						loc := tokens[i + 1].loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name to be an word\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
 
-				if !(tokens[i + 1].kind == TOKEN_WORD) {
-					loc := tokens[i + 1].loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name to be an word\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
+					macroKeyLoc := token.loc
+					macroName   := tokens[i + 1].scontent
+					macroToks   := []Token{}
+					macroClosed := false
 
-				macroKeyLoc := token.loc
-				macroName   := tokens[i + 1].scontent
-				macroToks   := []Token{}
-				macroClosed := false
-
-				if in(macroName, builtinWordsNames) {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
-						tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
-					os.Exit(1)
-				}
-
-				for m := range macros {
-					if macros[m].name == macroName {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
+					if in(macroName, builtinWordsNames) {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
 							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
 						os.Exit(1)
 					}
-				}
 
-				i += 2
-
-				blockStack := []int{}
-				pop        := 0
-				if pop == 0 {}
-				for i < len(tokens) {
-					if tokens[i].scontent == "end" && len(blockStack) == 0 {
-						macroClosed = true
-						break
+					for m := range macros {
+						if macros[m].name == macroName {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
+								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
+							os.Exit(1)
+						}
 					}
 
-					if tokens[i].scontent == "macro" {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+					i += 2
+
+					blockStack := []int{}
+					pop        := 0
+					if pop == 0 {}
+					for i < len(tokens) {
+						if tokens[i].scontent == "end" && len(blockStack) == 0 {
+							macroClosed = true
+							break
+						}
+
+						if tokens[i].scontent == "macro" {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+							os.Exit(1)
+						}
+
+						if !(OP_COUNT == 41) {
+							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macros blocks. Add here only operations that are closed by `end`\n")
+							os.Exit(1)
+						}
+
+						switch {
+						case (tokens[i].scontent == "if")  ||
+							(tokens[i].scontent == "else") ||
+							(tokens[i].scontent == "do"):
+							blockStack = append(blockStack, 1)
+						case tokens[i].scontent == "end":
+							blockStack, pop = popInt(blockStack)
+						}
+
+						macroToks = append(macroToks, tokens[i])
+						i += 1
+					}
+
+					macros = append(macros, Macro{name: macroName, toks: macroToks})
+
+					if !macroClosed {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
 						os.Exit(1)
 					}
+				default:
+					err := true
 
-					if !(OP_COUNT == 41) {
-						fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macros blocks. Add here only operations that are closed by `end`\n")
+					for m := range macros {
+						curmac := macros[m]
+
+						if curmac.name == token.scontent {
+							fmt.Fprintf(os.Stderr, "TODO: Expanding macros is not implemented yet\n")
+							os.Exit(1)
+							err = false
+							break
+						}
+					}
+
+					if err {
+						loc := token.loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
+							token.scontent)
 						os.Exit(1)
 					}
-
-					switch {
-					case (tokens[i].scontent == "if")  ||
-						(tokens[i].scontent == "else") ||
-						(tokens[i].scontent == "do"):
-						blockStack = append(blockStack, 1)
-					case tokens[i].scontent == "end":
-						blockStack, pop = popInt(blockStack)
-					}
-
-					macroToks = append(macroToks, tokens[i])
-					i += 1
 				}
-
-				macros = append(macros, Macro{name: macroName, toks: macroToks})
-
-				if !macroClosed {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
-					os.Exit(1)
-				}
-			default:
-				err := true
-
-				for m := range macros {
-					curmac := macros[m]
-
-					if curmac.name == token.scontent {
-						fmt.Fprintf(os.Stderr, "TODO: Expanding macros is not implemented yet\n")
-						os.Exit(1)
-						err = false
-						break
-					}
-				}
-
-				if err {
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
-						token.scontent)
-					os.Exit(1)
-				}
+			} else {
+				ops = append(ops, optoadd)
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "ERROR: Unreachable\n")
+			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (compileTokensIntoOps)\n")
 			os.Exit(1)
 		}
 		i += 1
