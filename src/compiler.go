@@ -65,6 +65,9 @@ const (
 	OP_WHILE    OpType = iota
 	OP_DO       OpType = iota
 
+	// others
+	OP_ERR      OpType = iota
+
 	OP_COUNT    OpType = iota
 )
 
@@ -76,7 +79,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 40) {
+	if !(OP_COUNT == 41) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -412,7 +415,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 40) {
+		if !(OP_COUNT == 41) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -507,7 +510,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_INT:
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_WORD:
-			if !(OP_COUNT == 40) {
+			if !(OP_COUNT == 41) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in compileTokensIntoOps\n")
 				os.Exit(1)
 			}
@@ -642,7 +645,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						os.Exit(1)
 					}
 
-					if !(OP_COUNT == 40) {
+					if !(OP_COUNT == 41) {
 						fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macros blocks. Add here only operations that are closed by `end`\n")
 						os.Exit(1)
 					}
@@ -744,7 +747,7 @@ var builtinWordsNames []string = []string{
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 40) {
+	if !(OP_COUNT == 41) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
