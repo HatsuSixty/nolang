@@ -642,6 +642,11 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						os.Exit(1)
 					}
 
+					if !(OP_COUNT == 40) {
+						fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macros blocks. Add here only operations that are closed by `end`\n")
+						os.Exit(1)
+					}
+
 					switch {
 					case (tokens[i].scontent == "if")  ||
 						(tokens[i].scontent == "else") ||
