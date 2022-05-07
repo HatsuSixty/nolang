@@ -747,9 +747,11 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 						switch {
-						case (tokens[i].scontent == "if")  ||
-							(tokens[i].scontent == "else") ||
+						case (tokens[i].scontent == "if") ||
 							(tokens[i].scontent == "do"):
+							blockStack = append(blockStack, 1)
+						case tokens[i].scontent == "else":
+							blockStack, pop = popInt(blockStack)
 							blockStack = append(blockStack, 1)
 						case tokens[i].scontent == "end":
 							blockStack, pop = popInt(blockStack)
