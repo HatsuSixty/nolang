@@ -588,17 +588,22 @@ func tokenWordAsOp(token Token) Op {
 
 func expandMacro(macro Macro) []Op {
 	opers := []Op{}
+	if !(TOKEN_COUNT == 2) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while handling tokens for macro expansion\n")
+		os.Exit(1)
+	}
+
 	for m := range macro.toks {
-		optoadd := tokenWordAsOp(macro.toks[m])
+		optoadd := tokenWordAsOp(macro.toks[m]) // words
 		if optoadd.op == OP_ERR {
 			switch {
-			case macro.toks[m].kind == TOKEN_INT:
+			case macro.toks[m].kind == TOKEN_INT: // integers
 				opers = append(opers, Op{op: OP_PUSH_INT,
 					operand: Operand(macro.toks[m].icontent),
 					loc: macro.toks[m].loc})
 			default:
 				err := true
-				for mm := range macros {
+				for mm := range macros { // expand macros that are inside macros
 					mn := macros[mm].name
 					if mn == macro.toks[m].scontent {
 						opers = append(opers, expandMacro(macros[mm])...)
@@ -607,7 +612,9 @@ func expandMacro(macro Macro) []Op {
 					}
 				}
 				if err {
-					fmt.Fprintf(os.Stderr, "ERROR: Unreachable (macro expansion)\n")
+					loc := macro.toks[m].loc
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
+							macro.toks[m].scontent)
 					os.Exit(2)
 				}
 			}
