@@ -4,10 +4,9 @@
 
 # Quick Start
 
-You will need to have the [go](https://go.dev) compiler installed.
+You will need to have the [go](https://go.dev) compiler and the [yasm](https://yasm.tortall.net/) assembler installed.
 ```console
-$ echo "34 35 + print" > test.no
+$ echo "34 35 + print" > sum.no
 $ make
-$ ./no
-$ ./output
+$ ./no -c sum.no -r
 ```

@@ -60,8 +60,13 @@ func cmdRunEchoInfo(args string, silent bool) {
 
 	command := exec.Command("/bin/sh", "-c", args)
 
-	err := command.Run()
+	stdout, err := command.Output()
+
 	if err != nil {
 		fmt.Errorf("ERROR: Could not run command\n")
+	}
+
+	if !silent && !(string(stdout) == "") {
+		fmt.Println(string(stdout))
 	}
 }
