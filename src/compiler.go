@@ -65,6 +65,9 @@ const (
 	OP_WHILE    OpType = iota
 	OP_DO       OpType = iota
 
+	// bitwise
+	OP_SHL      OpType = iota
+
 	// others
 	OP_ERR      OpType = iota
 
@@ -79,7 +82,7 @@ type Op struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 41) {
+	if !(OP_COUNT == 42) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -390,6 +393,12 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    push rbx\n"           )
 			f.WriteString("    push rcx\n"           )
 			f.WriteString("    push rdx\n"           )
+		case OP_SHL:
+			f.WriteString("    ;; -- shl --\n"       )
+			f.WriteString("    pop rcx\n"            )
+			f.WriteString("    pop rbx\n"            )
+			f.WriteString("    shl rbx, cl\n"        )
+			f.WriteString("    push rbx\n"           )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -415,7 +424,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 41) {
+		if !(OP_COUNT == 42) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -497,7 +506,7 @@ type Macro struct {
 var macros []Macro
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 41) {
+	if !(OP_COUNT == 42) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -581,6 +590,8 @@ func tokenWordAsOp(token Token) Op {
 		return Op{op: OP_2DUP, loc: token.loc}
 	case token.scontent == "2swap":
 		return Op{op: OP_2SWAP, loc: token.loc}
+	case token.scontent == "shl":
+		return Op{op: OP_SHL, loc: token.loc}
 	default:
 		return Op{op: OP_ERR}
 	}
@@ -589,7 +600,7 @@ func tokenWordAsOp(token Token) Op {
 func expandMacro(macro Macro) []Op {
 	opers := []Op{}
 	if !(TOKEN_COUNT == 2) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while handling tokens for macro expansion\n")
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of tokens while handling tokens for macro expansion\n")
 		os.Exit(1)
 	}
 
@@ -695,7 +706,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							os.Exit(1)
 						}
 
-						if !(OP_COUNT == 41) {
+						if !(OP_COUNT == 42) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macros blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
@@ -796,10 +807,11 @@ var builtinWordsNames []string = []string{
 	"while",
 	"do",
 	"macro",
+	"shl",
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 41) {
+	if !(OP_COUNT == 42) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
