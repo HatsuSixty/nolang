@@ -749,12 +749,38 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						switch {
 						case (tokens[i].scontent == "if") ||
 							(tokens[i].scontent == "do"):
-							blockStack = append(blockStack, 1)
+							blockStack = append(blockStack, i)
 						case tokens[i].scontent == "else":
 							blockStack, pop = popInt(blockStack)
-							blockStack = append(blockStack, 1)
+							if !(tokens[pop].scontent == "if") {
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
+									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+								os.Exit(1)
+							}
+
+							if !(len(blockStack) > 0) {
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
+									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+								os.Exit(1)
+							}
+
+							blockStack = append(blockStack, i)
 						case tokens[i].scontent == "end":
+							if !(len(blockStack) > 0) {
+								fmt.Fprintf(os.Stderr, "%s:%s:%d: ERROR: `end` does not have any block to close\n",
+									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+								os.Exit(1)
+							}
+
 							blockStack, pop = popInt(blockStack)
+
+							if !((tokens[pop].scontent == "if") ||
+								(tokens[pop].scontent == "else")||
+								(tokens[pop].scontent == "do")) {
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do` or `macro` is not allowed\n",
+									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+								os.Exit(1)
+							}
 						}
 
 						macroToks = append(macroToks, tokens[i])
