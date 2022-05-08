@@ -730,7 +730,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					pop        := 0
 					if pop == 0 {}
 					for i < len(tokens) {
-						if tokens[i].scontent == "end" && len(blockStack) == 0 {
+						if tokenWordAsOp(tokens[i]).op == OP_END && len(blockStack) == 0 {
 							macroClosed = true
 							break
 						}
@@ -747,12 +747,12 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 						switch {
-						case (tokens[i].scontent == "if") ||
-							(tokens[i].scontent == "do"):
+						case tokenWordAsOp(tokens[i]).op == OP_IF ||
+							 tokenWordAsOp(tokens[i]).op == OP_DO:
 							blockStack = append(blockStack, i)
-						case tokens[i].scontent == "else":
+						case tokenWordAsOp(tokens[i]).op == OP_ELSE:
 							blockStack, pop = popInt(blockStack)
-							if !(tokens[pop].scontent == "if") {
+							if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
 								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
@@ -765,7 +765,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							}
 
 							blockStack = append(blockStack, i)
-						case tokens[i].scontent == "end":
+						case tokenWordAsOp(tokens[i]).op == OP_END:
 							if !(len(blockStack) > 0) {
 								fmt.Fprintf(os.Stderr, "%s:%s:%d: ERROR: `end` does not have any block to close\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
@@ -774,9 +774,9 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 							blockStack, pop = popInt(blockStack)
 
-							if !((tokens[pop].scontent == "if") ||
-								(tokens[pop].scontent == "else")||
-								(tokens[pop].scontent == "do")) {
+							if !((tokenWordAsOp(tokens[pop]).op == OP_IF)  ||
+								 (tokenWordAsOp(tokens[pop]).op == OP_ELSE)||
+								 (tokenWordAsOp(tokens[pop]).op == OP_DO)) {
 								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do` or `macro` is not allowed\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
