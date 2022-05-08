@@ -74,13 +74,56 @@ func lexline(line string, loc Location) []Token {
 				c -= len(finalstring)
 				c += 1
 				str := ""
+				strclosed := false
 				for c < len(line) {
 					if line[c] == '"' {
+						strclosed = true
 						break
+					}
+
+					if line[c] == '\\' {
+						if !((len(line)-1) > c+1) {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected escape character but got nothing\n",
+								loc.f, loc.r, c)
+							os.Exit(1)
+						}
+
+						c += 1
+						escapechar := line[c]
+
+						switch escapechar {
+						case 'n':
+							str += "\n"
+						case 't':
+							str += "\t"
+						case 'r':
+							str += "\r"
+						case '\'':
+							str += "'"
+						case '"':
+							str += "\""
+						default:
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown escape character: %c\n",
+								loc.f, loc.r, c, escapechar)
+							os.Exit(1)
+						}
+
+						c += 1
+						if line[c] == '"' {
+							strclosed = true
+							break
+						}
 					}
 					str += string(line[c])
 					c += 1
 				}
+
+				if !strclosed {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: String not closed\n",
+						loc.f, loc.r, c - len(str) - 1)
+					os.Exit(1)
+				}
+
 				c += 1
 				postfix := ""
 				for c < len(line) {
