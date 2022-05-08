@@ -62,6 +62,13 @@ func lexline(line string, loc Location) []Token {
 					if line[c] == '/' && line[c+1] == '/' {
 						goto yeahiquit
 					}
+				} else {
+					if !isQuote(rune(finalstring[0])) { // treat as word
+						tokens = append(tokens,
+							Token{kind: TOKEN_WORD,
+								scontent: finalstring,
+								loc: Location{loc.f, loc.r, c + 1}})
+					}
 				}
 
 			case isNumber(finalstring):
@@ -70,13 +77,13 @@ func lexline(line string, loc Location) []Token {
 				tokens = append(tokens,
 					Token{kind: TOKEN_INT,
 						icontent: i,
-						loc: Location{loc.f, loc.r, c - len(finalstring)}})
+						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
 
 			case !isQuote(rune(finalstring[0])):
 				tokens = append(tokens,
 					Token{kind: TOKEN_WORD,
 						scontent: finalstring,
-						loc: Location{loc.f, loc.r, c - len(finalstring)}})
+						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
 
 			case finalstring[0] == '"':
 				c -= len(finalstring)
@@ -92,7 +99,7 @@ func lexline(line string, loc Location) []Token {
 					if line[c] == '\\' {
 						if !((len(line)-1) > c+1) {
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected escape character but got nothing\n",
-								loc.f, loc.r, c)
+								loc.f, loc.r, c + 1)
 							os.Exit(1)
 						}
 
@@ -112,7 +119,7 @@ func lexline(line string, loc Location) []Token {
 							str += "\""
 						default:
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown escape character: %c\n",
-								loc.f, loc.r, c, escapechar)
+								loc.f, loc.r, c + 1, escapechar)
 							os.Exit(1)
 						}
 
@@ -128,7 +135,7 @@ func lexline(line string, loc Location) []Token {
 
 				if !strclosed {
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: String not closed\n",
-						loc.f, loc.r, c - len(str) - 1)
+						loc.f, loc.r, c - len(str) + 1)
 					os.Exit(1)
 				}
 
@@ -150,7 +157,7 @@ func lexline(line string, loc Location) []Token {
 				tokens = append(tokens,
 					Token{kind: TOKEN_STR,
 						scontent: str,
-						loc: Location{loc.f, loc.r, c - len(str)}})
+						loc: Location{loc.f, loc.r, c - len(str) + 1}})
 			}
 
 			finalstring = ""
