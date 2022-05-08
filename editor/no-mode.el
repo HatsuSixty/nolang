@@ -29,6 +29,10 @@
 
 (defconst no-mode-syntax-table
   (with-syntax-table (copy-syntax-table)
+    ;; C/C++ style comments
+    (modify-syntax-entry ?/ ". 124b")
+    (modify-syntax-entry ?* ". 23")
+    (modify-syntax-entry ?\n "> b")
     ;; Chars are the same as strings
     (modify-syntax-entry ?' "\"")
     (syntax-table))
