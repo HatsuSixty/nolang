@@ -56,6 +56,14 @@ func lexline(line string, loc Location) []Token {
 		if unicode.IsSpace(curchar) && (finalstring != "") {
 
 			switch {
+			case finalstring[0] == '/':
+				c -= len(finalstring)
+				if (len(line)-1) > c+1 {
+					if line[c] == '/' && line[c+1] == '/' {
+						goto yeahiquit
+					}
+				}
+
 			case isNumber(finalstring):
 				i, err := strconv.Atoi(finalstring)
 				if err != nil {}
@@ -154,6 +162,7 @@ func lexline(line string, loc Location) []Token {
 		c += 1
 	}
 
+yeahiquit:
 	return tokens
 }
 
