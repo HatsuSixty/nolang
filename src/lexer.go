@@ -24,6 +24,7 @@ type TokenKind int
 const (
 	TOKEN_INT   TokenKind = iota
 	TOKEN_WORD  TokenKind = iota
+	TOKEN_STR   TokenKind = iota
 	TOKEN_COUNT TokenKind = iota
 )
 
@@ -41,16 +42,15 @@ func lexline(line string, loc Location) []Token {
 
 	line += " "
 
-	if !(TOKEN_COUNT == 2) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile()\n")
+	if !(TOKEN_COUNT == 3) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile\n")
 		os.Exit(1)
 	}
 
-	c := 1
-
 	var finalstring string
 
-	for c := range line {
+	c := 0
+	for c < len(line) {
 		curchar := rune(line[c])
 
 		if unicode.IsSpace(curchar) && (finalstring != "") {
@@ -64,20 +64,52 @@ func lexline(line string, loc Location) []Token {
 						icontent: i,
 						loc: Location{loc.f, loc.r, c - len(finalstring)}})
 
-			case !isQuote(rune(finalstring[0])) && !isQuote(rune(finalstring[len(finalstring)-1])):
+			case !isQuote(rune(finalstring[0])):
 				tokens = append(tokens,
 					Token{kind: TOKEN_WORD,
 						scontent: finalstring,
 						loc: Location{loc.f, loc.r, c - len(finalstring)}})
+
+			case finalstring[0] == '"':
+				c -= len(finalstring)
+				c += 1
+				str := ""
+				for c < len(line) {
+					if line[c] == '"' {
+						break
+					}
+					str += string(line[c])
+					c += 1
+				}
+				c += 1
+				postfix := ""
+				for c < len(line) {
+					if unicode.IsSpace(rune(line[c])) {
+						break
+					} else {
+						postfix += string(line[c])
+					}
+					c += 1
+				}
+				if postfix != "" {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
+						loc.f, loc.r, c - len(str), postfix)
+					os.Exit(1)
+				}
+				tokens = append(tokens,
+					Token{kind: TOKEN_STR,
+						scontent: str,
+						loc: Location{loc.f, loc.r, c - len(str)}})
 			}
+
 			finalstring = ""
 		} else {
 			if !(unicode.IsSpace(curchar)) {
 				finalstring += string(curchar)
 			}
 		}
+		c += 1
 	}
-	c += 1
 
 	return tokens
 }
