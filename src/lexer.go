@@ -64,7 +64,7 @@ func lexline(line string, loc Location) []Token {
 						icontent: i,
 						loc: Location{loc.f, loc.r, c - len(finalstring)}})
 
-			case isWord(finalstring):
+			case !isQuote(rune(finalstring[0])) && !isQuote(rune(finalstring[len(finalstring)-1])):
 				tokens = append(tokens,
 					Token{kind: TOKEN_WORD,
 						scontent: finalstring,

@@ -22,19 +22,11 @@ func isNumber(str string) bool {
 	return true
 }
 
-func isString(str string) bool {
-	firstchar := ([]rune(str)[0])
-	if firstchar == '"' || firstchar == '\'' {
+func isQuote(char rune) bool {
+	if char == '\'' || char == '"' {
 		return true
 	}
 	return false
-}
-
-func isWord(word string) bool {
-	if isString(word) || isNumber(word) {
-		return false
-	}
-	return true
 }
 
 func popInt(stack []int) ([]int, int) {
