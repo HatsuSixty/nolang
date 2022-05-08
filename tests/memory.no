@@ -1,0 +1,11 @@
+60 mem !8
+mem @8 print
+
+60 mem !16
+mem @16 print
+
+60 mem !32
+mem @32 print
+
+60 mem !64
+mem @64 print

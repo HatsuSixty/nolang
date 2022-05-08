@@ -1,0 +1,7 @@
+0 while dup 10 < do
+  dup 2 divmod swap drop 0 = if
+    69 print
+  end
+  dup print
+  1 +
+end

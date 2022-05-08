@@ -1,0 +1,10 @@
+macro ,
+  @8
+end
+
+macro .
+  !8
+end
+
+69 mem .
+mem , print

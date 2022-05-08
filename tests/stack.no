@@ -1,0 +1,2 @@
+10 20 30 dup drop dup drop dup drop
+rot rot over over print print print
