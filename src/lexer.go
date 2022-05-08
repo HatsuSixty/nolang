@@ -93,7 +93,7 @@ func lexline(line string, loc Location) []Token {
 				}
 				if postfix != "" {
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
-						loc.f, loc.r, c - len(str), postfix)
+						loc.f, loc.r, c - len(postfix) + 1, postfix)
 					os.Exit(1)
 				}
 				tokens = append(tokens,
@@ -129,7 +129,7 @@ func lexfile(filepath string) []Token {
 	r := 1
 
 	for scanner.Scan() {
-		tokens = append(tokens, lexline(scanner.Text(), Location{f: f, r: 1})...)
+		tokens = append(tokens, lexline(scanner.Text(), Location{f: f, r: r})...)
 		r += 1
 	}
 
