@@ -68,6 +68,6 @@ func cmdRunEchoInfo(args string, silent bool) {
 	}
 
 	if !silent && !(string(stdout) == "") {
-		fmt.Println(string(stdout))
+		fmt.Print(string(stdout))
 	}
 }

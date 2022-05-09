@@ -83,7 +83,7 @@ func lexline(line string, loc Location) []Token {
 			case !isQuote(rune(finalstring[0])):
 				for ch := range finalstring {
 					if isQuote(rune(finalstring[ch])) {
-						fmt.Println("%s:%d:%d: ERROR: String prefixes are not allowed\n",
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: String prefixes are not allowed\n",
 							loc.f, loc.r, c - len(finalstring))
 						os.Exit(1)
 					}
@@ -125,6 +125,8 @@ func lexline(line string, loc Location) []Token {
 							str += "'"
 						case '"':
 							str += "\""
+						case '\\':
+							str += "\\"
 						default:
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown escape character: %c\n",
 								loc.f, loc.r, c + 1, escapechar)
