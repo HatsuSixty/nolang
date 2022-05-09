@@ -164,10 +164,13 @@ func lexline(line string, loc Location) []Token {
 				case postfix == "ch":
 					ischar = true
 				default:
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
-						loc.f, loc.r, c - len(postfix) + 1, postfix)
-					os.Exit(1)
+					if postfix != "" {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
+							loc.f, loc.r, c - len(postfix) + 1, postfix)
+						os.Exit(1)
+					}
 				}
+
 				switch {
 				case ischar:
 					if !(len(str) == 1) {

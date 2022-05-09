@@ -1,31 +1,5 @@
-// nolang standard library
+include "core.no"
 
-// sizes
-macro sizeof(u64) 8 end
-macro sizeof(u32) 4 end
-macro sizeof(u16) 2 end
-macro sizeof(u8)  1 end
-
-macro sizeof(ptr)  sizeof(u64) end
-macro sizeof(bool) sizeof(u64) end
-macro sizeof(int)  sizeof(u64) end
-macro sizeof(addr) sizeof(u64) end
-
-macro NULL 0 end
-
-// divisions
-macro /    divmod drop       end
-macro %    divmod swap drop  end
-macro mod  %                 end
-macro div  /                 end
-//macro imod idivmod swap drop end
-//macro idiv idivmod drop      end
-
-// increments
-macro inc64-by over @64 + swap  !64 end
-macro inc64    dup @64 1 + swap !64 end
-macro dec64    dup @64 1 - swap !64 end
-macro inc32    dup @32 1 + swap !32 end
-macro dec32    dup @32 1 - swap !32 end
-macro inc8     dup @8 1 + swap   !8 end
-macro dec8     dup @8 1 - swap   !8 end
+// syscalls
+macro exit   60 syscall1 end
+macro write 1 1 syscall3 end
