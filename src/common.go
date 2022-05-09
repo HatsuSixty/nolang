@@ -5,7 +5,6 @@ import (
 	"unicode"
 	"os/exec"
 	"os"
-	"errors"
 )
 
 func isError(err error) bool {
@@ -48,10 +47,11 @@ func in(str string, slc []string) bool {
 }
 
 func fileExists(path string) bool {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return false
+	returnval := true
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		returnval = false
 	}
-	return true
+	return returnval
 }
 
 func cmdRunEchoInfo(args string, silent bool) {

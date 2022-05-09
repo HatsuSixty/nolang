@@ -855,7 +855,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					case fileExists(wd + "/" + includepath):
 						pathtofile = wd + "/" + includepath
 					case fileExists(wd + "/std/" + includepath):
-						pathtofile = wd + "/" + includepath
+						pathtofile = wd + "/std/" + includepath
 					default:
 						pathtofile = includepath
 					}

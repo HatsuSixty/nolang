@@ -58,18 +58,19 @@ func lexline(line string, loc Location) []Token {
 			switch {
 			case finalstring[0] == '/':
 				c -= len(finalstring)
-				if (len(line)-1) > c+1 {
-					if line[c] == '/' && line[c+1] == '/' {
+				if ((len(line)-1) > c+1) {
+					if (line[c] == '/' && line[c+1] == '/') {
 						goto yeahiquit
 					}
-				} else {
-					if !isQuote(rune(finalstring[0])) { // treat as word
-						tokens = append(tokens,
-							Token{kind: TOKEN_WORD,
-								scontent: finalstring,
-								loc: Location{loc.f, loc.r, c + 1}})
-					}
 				}
+				// else
+				if !isQuote(rune(finalstring[0])) { // treat as word
+					tokens = append(tokens,
+						Token{kind: TOKEN_WORD,
+							scontent: "/",
+							loc: Location{loc.f, loc.r, c + 1}})
+				}
+
 
 			case isNumber(finalstring):
 				i, err := strconv.Atoi(finalstring)
