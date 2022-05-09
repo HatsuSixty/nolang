@@ -556,12 +556,79 @@ func crossreferenceBlocks(program []Op) []Op {
 	return mprogram
 }
 
-type Macro struct {
-	toks []Token
-	name string
-}
+func evaluateAtCompileTime(toks []Token, loc Location) int {
+	stack := []int{}
+	ret   := 0
+	for tk := range toks {
+		tok := toks[tk]
+		op := tokenWordAsOp(tok).op
+		a := 0
+		b := 0
+		switch {
+		case op == OP_PLUS:
+			if len(stack) >= 2 {
+				stack, a = popInt(stack)
+				stack, b = popInt(stack)
+				stack = append(stack, a + b)
+			}
+		case op == OP_MINUS:
+			if len(stack) >= 2 {
+				stack, a = popInt(stack)
+				stack, b = popInt(stack)
+				stack = append(stack, b - a)
+			}
+		case op == OP_MULT:
+			if len(stack) >= 2 {
+				stack, a = popInt(stack)
+				stack, b = popInt(stack)
+				stack = append(stack, a * b)
+			}
+		case op == OP_DIVMOD:
+			if len(stack) >= 2 {
+				stack, a = popInt(stack)
+				stack, b = popInt(stack)
+				stack = append(stack, int(b / a))
+				stack = append(stack, int(b % a))
+			}
+		case op == OP_DROP:
+			if len(stack) > 0 {
+				stack, a = popInt(stack)
+			}
+		default:
+			if op == OP_ERR {
+				switch {
+				case tok.kind == TOKEN_INT:
+					stack = append(stack, tok.icontent)
+				case tok.kind == TOKEN_WORD:
+					for co := range constants {
+						curcon := constants[co]
+						if curcon.name == tok.scontent {
+							stack = append(stack, int(curcon.value))
+							break
+						}
+					}
+				case tok.kind == TOKEN_STR:
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Strings are not allowed inside constant expressions\n",
+						loc.f, loc.r, loc.c)
+					os.Exit(1)
+				default:
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unsupported word at compile time: %s\n",
+						tok.loc.f, tok.loc.r, tok.loc.c, tok.scontent)
+					os.Exit(1)
+				}
+			}
+		}
+	}
 
-var macros []Macro
+	if !(len(stack) == 1) {
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Compile time evaluation should produce only 1 result\n",
+			loc.f, loc.r, loc.c)
+		os.Exit(1)
+	}
+
+	ret = stack[0]
+	return ret
+}
 
 func tokenWordAsOp(token Token) Op {
 	if !(OP_COUNT == 47) {
@@ -692,6 +759,19 @@ func expandMacro(macro Macro) []Op {
 						break
 					}
 				}
+
+				if err {
+					for co := range constants {
+						curcon := constants[co]
+
+						if curcon.name == macro.toks[m].scontent {
+							opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: macro.toks[m].loc})
+							err = false
+							break
+						}
+					}
+				}
+
 				if err {
 					loc := macro.toks[m].loc
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
@@ -705,6 +785,18 @@ func expandMacro(macro Macro) []Op {
 	}
 	return opers
 }
+
+type Const struct {
+	value int
+	name  string
+}
+var constants []Const
+
+type Macro struct {
+	toks []Token
+	name string
+}
+var macros []Macro
 
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
@@ -830,7 +922,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
 						os.Exit(1)
 					}
-				case token.scontent == "include": // end macro parsing
+				case token.scontent == "include": // end const parsing
 					if !((len(tokens)-1) >= i + 1) { // begin include parsing
 						loc := token.loc
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path but got nothing\n",
@@ -863,7 +955,80 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					includeops := compileFileIntoOps(pathtofile)
 					ops = append(ops, includeops...)
 					i += 1
-				default: // end include parsing
+				case token.scontent == "const":  // end include parsing
+					if !((len(tokens)-1) >= i + 1) { // begin const parsing
+						loc := token.loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name but got nothing\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					if !(tokens[i + 1].kind == TOKEN_WORD) {
+						loc := tokens[i + 1].loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name to be an word\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					constKeyLoc := tokens[i].loc
+					constName   := tokens[i + 1].scontent
+					constToks   := []Token{}
+					constClosed := false
+
+					for m := range macros {
+						if macros[m].name == constName {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
+								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
+							os.Exit(1)
+						}
+					}
+
+					for co := range constants {
+						if constants[co].name == constName {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing constant: %s\n",
+								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
+							os.Exit(1)
+						}
+					}
+
+					if in(constName, builtinWordsNames) {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
+							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
+						os.Exit(1)
+					}
+
+					i += 2
+
+					for i < len(tokens) {
+						if tokens[i].scontent == "const" {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside constants is not allowed\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+							os.Exit(1)
+						}
+
+						if tokenWordAsOp(tokens[i]).op == OP_END {
+							constClosed = true
+							break
+						}
+
+						constToks = append(constToks, tokens[i])
+						i += 1
+					}
+
+					if !constClosed {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
+						os.Exit(1)
+					}
+
+					if len(constToks) == 0 {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing constant block\n",
+							constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
+						os.Exit(1)
+					}
+
+					constVal := evaluateAtCompileTime(constToks, constKeyLoc)
+					constants = append(constants, Const{name: constName, value: constVal})
+				default: // end const parsing
 					err := true
 
 					for m := range macros {
@@ -873,6 +1038,18 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							ops = append(ops, expandMacro(curmac)...)
 							err = false
 							break
+						}
+					}
+
+					if err {
+						for co := range constants {
+							curcon := constants[co]
+
+							if curcon.name == token.scontent {
+								ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: token.loc})
+								err = false
+								break
+							}
 						}
 					}
 
