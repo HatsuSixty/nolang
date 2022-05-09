@@ -556,6 +556,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	return mprogram
 }
 
+var compiletimecount int = 0
 func evaluateAtCompileTime(toks []Token, loc Location) int {
 	stack := []int{}
 	ret   := 0
@@ -594,6 +595,18 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 			if len(stack) > 0 {
 				stack, a = popInt(stack)
 			}
+		case tok.scontent == "increment":
+			if len(stack) < 1 {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `increment` requires 1 argument\n",
+					tok.loc.f, tok.loc.r, tok.loc.c)
+				os.Exit(1)
+			}
+			stack, a = popInt(stack)
+			stack = append(stack, compiletimecount)
+			compiletimecount += a
+		case tok.scontent == "reset":
+			stack = append(stack, compiletimecount)
+			compiletimecount = 0
 		default:
 			if op == OP_ERR {
 				switch {
