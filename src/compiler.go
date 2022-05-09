@@ -788,15 +788,15 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							 tokenWordAsOp(tokens[i]).op == OP_DO:
 							blockStack = append(blockStack, i)
 						case tokenWordAsOp(tokens[i]).op == OP_ELSE:
-							blockStack, pop = popInt(blockStack)
-							if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
-								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
+							if !(len(blockStack) > 0) {
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
 							}
 
-							if !(len(blockStack) > 0) {
-								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
+							blockStack, pop = popInt(blockStack)
+							if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
 							}
