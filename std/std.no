@@ -2,7 +2,7 @@
 // some parts stolen from tsoding's porth <https://gitlab.com/tsoding/porth>
 
 include "core.no"
-include "std.no"
+include "linux.no"
 
 macro nop end
 
