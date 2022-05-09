@@ -6,13 +6,13 @@ include "linux.no"
 
 macro nop end
 
-macro true  1 end
-macro false 0 end
+const true  1 end
+const false 0 end
 
 /// Standard streams
-macro stdin  0 end
-macro stdout 1 end
-macro stderr 2 end
+const stdin  0 end
+const stdout 1 end
+const stderr 2 end
 
 macro cstrlen
   dup
