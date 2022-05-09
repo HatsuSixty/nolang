@@ -178,7 +178,7 @@ func lexfile(filepath string) []Token {
 
 	file, err := os.Open(filepath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Could not open file `%s`: %s", filepath, err)
+		fmt.Fprintf(os.Stderr, "ERROR: Could not open file `%s`: %s\n", filepath, err)
 		os.Exit(3)
 	}
 

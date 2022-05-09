@@ -727,7 +727,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 			optoadd := tokenWordAsOp(token)
 			if optoadd.op == OP_ERR {
 				switch {
-				case token.scontent == "macro":
+				case token.scontent == "macro": // begin macro parsing
 					if !((len(tokens)-1) >= i + 1) {
 						loc := token.loc
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
@@ -830,7 +830,40 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
 						os.Exit(1)
 					}
-				default:
+				case token.scontent == "include": // end macro parsing
+					if !((len(tokens)-1) >= i + 1) { // begin include parsing
+						loc := token.loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path but got nothing\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					if !(tokens[i + 1].kind == TOKEN_STR) {
+						loc := tokens[i + 1].loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path to be an word\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					wd, err := os.Getwd()
+					if err != nil {}
+
+					includepath := tokens[i + 1].scontent
+					pathtofile  := ""
+
+					switch {
+					case fileExists(wd + "/" + includepath):
+						pathtofile = wd + "/" + includepath
+					case fileExists(wd + "/std/" + includepath):
+						pathtofile = wd + "/" + includepath
+					default:
+						pathtofile = includepath
+					}
+
+					includeops := compileFileIntoOps(pathtofile)
+					ops = append(ops, includeops...)
+					i += 1
+				default: // end include parsing
 					err := true
 
 					for m := range macros {
