@@ -1,4 +1,4 @@
-// nolang standard library
+// nolang's core macros
 
 // sizes
 macro sizeof(u64) 8 end
