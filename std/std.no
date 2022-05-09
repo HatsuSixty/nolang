@@ -52,8 +52,8 @@ macro eputs
 end
 
 macro isdigit
-  dup  '0' >=
-  swap '9' <=
+  dup  '0'ch >=
+  swap '9'ch <=
   and
 end
 
