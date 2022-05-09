@@ -81,18 +81,25 @@ func lexline(line string, loc Location) []Token {
 						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
 
 			case !isQuote(rune(finalstring[0])):
+				for ch := range finalstring {
+					if isQuote(rune(finalstring[ch])) {
+						fmt.Println("%s:%d:%d: ERROR: String prefixes are not allowed\n",
+							loc.f, loc.r, c - len(finalstring))
+						os.Exit(1)
+					}
+				}
 				tokens = append(tokens,
 					Token{kind: TOKEN_WORD,
 						scontent: finalstring,
 						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
 
-			case finalstring[0] == '"':
+			case isQuote(rune(finalstring[0])):
 				c -= len(finalstring)
 				c += 1
 				str := ""
 				strclosed := false
 				for c < len(line) {
-					if line[c] == '"' {
+					if isQuote(rune(line[c])) {
 						strclosed = true
 						break
 					}
@@ -125,7 +132,7 @@ func lexline(line string, loc Location) []Token {
 						}
 
 						c += 1
-						if line[c] == '"' {
+						if isQuote(rune(line[c])) {
 							strclosed = true
 							break
 						}
@@ -150,15 +157,36 @@ func lexline(line string, loc Location) []Token {
 					}
 					c += 1
 				}
-				if postfix != "" {
+
+				ischar := false
+
+				switch {
+				case postfix == "ch":
+					ischar = true
+				default:
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
 						loc.f, loc.r, c - len(postfix) + 1, postfix)
 					os.Exit(1)
 				}
-				tokens = append(tokens,
-					Token{kind: TOKEN_STR,
-						scontent: str,
-						loc: Location{loc.f, loc.r, c - len(str) + 1}})
+				switch {
+				case ischar:
+					if !(len(str) == 1) {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Character literals can only contain 1 character\n",
+							loc.f, loc.r, c - len(postfix) + 1)
+						os.Exit(1)
+					}
+
+					tokens = append(tokens,
+						Token{kind: TOKEN_INT,
+							icontent: int(str[0]),
+							loc: Location{loc.f, loc.r, c - len(str) + 1}})
+
+				default:
+					tokens = append(tokens,
+						Token{kind: TOKEN_STR,
+							scontent: str,
+							loc: Location{loc.f, loc.r, c - len(str) + 1}})
+				}
 			}
 
 			finalstring = ""
