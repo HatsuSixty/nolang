@@ -916,6 +916,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							break
 						}
 
+						// @disallow inside macros
 						if tokens[i].scontent == keywordAsString(KEYWORD_MACRO) {
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
 								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
