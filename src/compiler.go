@@ -18,6 +18,7 @@ const (
 	KEYWORD_INCLUDE   Keyword = iota
 	KEYWORD_INCREMENT Keyword = iota
 	KEYWORD_RESET     Keyword = iota
+	KEYWORD_MEMORY    Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -32,6 +33,7 @@ const (
 	OP_PRINT    OpType = iota
 	OP_PUSH_INT OpType = iota
 	OP_PUSH_STR OpType = iota
+	OP_PUSH_MEM OpType = iota
 
 	// syscalls
 	OP_SYSCALL0 OpType = iota
@@ -105,7 +107,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 47) {
+	if !(OP_COUNT == 48) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -169,6 +171,9 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			strcnt += 1
 			f.WriteString("    push " + strconv.Itoa(len(program[i].operstr)) + "\n")
 			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
+		case OP_PUSH_MEM:
+			f.WriteString("    ;; -- push mem --\n"  )
+			f.WriteString("    push mem_" + strconv.Itoa(int(program[i].operand)) + "\n")
 		case OP_PLUS:
 			f.WriteString("    ;; -- plus --\n"      )
 			f.WriteString("    pop rax\n"            )
@@ -466,6 +471,10 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    syscall\n"                )
 	f.WriteString("segment .bss\n"               )
 	f.WriteString("mem: resb " + strconv.Itoa(MEM_CAP) + "\n")
+	for mem := range memorys {
+		curm := memorys[mem]
+		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
+	}
 	f.WriteString("segment .data\n"              )
 	for s := range strings {
 		curs := strings[s]
@@ -493,7 +502,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 47) {
+		if !(OP_COUNT == 48) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -655,7 +664,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 5) {
+	if !(KEYWORD_COUNT == 6) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -667,13 +676,14 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_RESET:     return "reset"
 	case KEYWORD_INCREMENT: return "increment"
 	case KEYWORD_MACRO:     return "macro"
+	case KEYWORD_MEMORY:    return "memory"
 
 	}
 	return "unreachable"
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 47) {
+	if !(OP_COUNT == 48) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -845,6 +855,14 @@ type Macro struct {
 }
 var macros []Macro
 
+type Memory struct {
+	name  string
+	id    int
+	alloc int
+}
+var memorys []Memory
+var memcnt int = 0
+
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
 
@@ -865,7 +883,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			optoadd := tokenWordAsOp(token)
 			if optoadd.op == OP_ERR {
-				if !(KEYWORD_COUNT == 5) {
+				if !(KEYWORD_COUNT == 6) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 					os.Exit(1)
 				}
@@ -929,7 +947,14 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							os.Exit(1)
 						}
 
-						if !(OP_COUNT == 47) {
+						if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside macros is not allowed\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+							os.Exit(1)
+						}
+
+
+						if !(OP_COUNT == 48) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
@@ -1087,7 +1112,60 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 					constVal := evaluateAtCompileTime(constToks, constKeyLoc)
 					constants = append(constants, Const{name: constName, value: constVal})
-				default: // end const parsing
+				case token.scontent == keywordAsString(KEYWORD_MEMORY): // end const parsing
+					if !((len(tokens)-1) >= i + 1) { // begin memory parsing
+						loc := token.loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name but got nothing\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					if !(tokens[i + 1].kind == TOKEN_WORD) {
+						loc := tokens[i + 1].loc
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name to be an word\n",
+							loc.f, loc.r, loc.c)
+						os.Exit(1)
+					}
+
+					memoryKeyLoc := tokens[i].loc
+					memoryName   := tokens[i + 1].scontent
+					memoryToks   := []Token{}
+					memoryClosed := false
+
+					i += 2
+
+					for i < len(tokens) {
+						if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside memory blocks is not allowed\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.r)
+							os.Exit(1)
+						}
+
+						if tokenWordAsOp(tokens[i]).op == OP_END {
+							memoryClosed = true
+							break
+						}
+
+						memoryToks = append(memoryToks, tokens[i])
+						i += 1
+					}
+
+					if !memoryClosed {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
+							memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
+						os.Exit(1)
+					}
+
+					if len(memoryToks) == 0 {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing memory block\n",
+							memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
+						os.Exit(1)
+					}
+
+					memoryVal := evaluateAtCompileTime(memoryToks, memoryKeyLoc)
+					memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
+					memcnt += 1
+				default: // end memory parsing
 					err := true
 
 					for m := range macros {
@@ -1106,6 +1184,18 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 							if curcon.name == token.scontent {
 								ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: token.loc})
+								err = false
+								break
+							}
+						}
+					}
+
+					if err {
+						for mem := range memorys {
+							curmem := memorys[mem]
+
+							if curmem.name == token.scontent {
+								ops = append(ops, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
 								err = false
 								break
 							}
@@ -1185,14 +1275,15 @@ var builtinWordsNames []string = []string{
 	"const",
 	"increment",
 	"reset",
+	"memory",
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 47) {
+	if !(OP_COUNT == 48) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
-	if !(KEYWORD_COUNT == 5) {
+	if !(KEYWORD_COUNT == 6) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in builtInWordsNames\n")
 		os.Exit(1)
 	}
