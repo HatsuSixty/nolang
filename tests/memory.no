@@ -9,3 +9,7 @@ mem @32 print
 
 60 mem !64
 mem @64 print
+
+memory hello 1 end
+1 hello !8
+hello @8 print
