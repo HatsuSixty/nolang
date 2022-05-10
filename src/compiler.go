@@ -629,14 +629,17 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 			compiletimecount = 0
 		default:
 			if op == OP_ERR {
+				err := true
 				switch {
 				case tok.kind == TOKEN_INT:
 					stack = append(stack, tok.icontent)
+					err = false
 				case tok.kind == TOKEN_WORD:
-					for co := range constants {
+					for co := 0; co < len(constants); co+=1 {
 						curcon := constants[co]
 						if curcon.name == tok.scontent {
 							stack = append(stack, int(curcon.value))
+							err = false
 							break
 						}
 					}
@@ -644,7 +647,8 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Strings are not allowed inside constant expressions\n",
 						loc.f, loc.r, loc.c)
 					os.Exit(1)
-				default:
+				}
+				if err {
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unsupported word at compile time: %s\n",
 						tok.loc.f, tok.loc.r, tok.loc.c, tok.scontent)
 					os.Exit(1)
