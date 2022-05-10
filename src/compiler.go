@@ -10,6 +10,17 @@ import (
 // should be enough for everyone
 const MEM_CAP int = 640000
 
+// keywords
+type Keyword int
+const (
+	KEYWORD_MACRO     Keyword = iota
+	KEYWORD_CONST     Keyword = iota
+	KEYWORD_INCLUDE   Keyword = iota
+	KEYWORD_INCREMENT Keyword = iota
+	KEYWORD_RESET     Keyword = iota
+	KEYWORD_COUNT     Keyword = iota
+)
+
 // operations
 type OpType int
 const (
@@ -527,7 +538,7 @@ func crossreferenceBlocks(program []Op) []Op {
 				mprogram[blockIp].operand = Operand(i + 1)
 			default:
 				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do` or `macro` is not allowed\n", loc.f, loc.r, loc.c)
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n", loc.f, loc.r, loc.c)
 				os.Exit(1)
 			}
 		case OP_WHILE:
@@ -641,6 +652,24 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 
 	ret = stack[0]
 	return ret
+}
+
+func keywordAsString(key Keyword) string {
+	if !(KEYWORD_COUNT == 5) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
+		os.Exit(1)
+	}
+
+	switch key {
+
+	case KEYWORD_CONST:     return "const"
+	case KEYWORD_INCLUDE:   return "include"
+	case KEYWORD_RESET:     return "reset"
+	case KEYWORD_INCREMENT: return "increment"
+	case KEYWORD_MACRO:     return "macro"
+
+	}
+	return "unreachable"
 }
 
 func tokenWordAsOp(token Token) Op {
@@ -763,6 +792,11 @@ func expandMacro(macro Macro) []Op {
 					operstr: OperStr(macro.toks[m].scontent),
 					loc: macro.toks[m].loc})
 			default:
+				if !(KEYWORD_COUNT == 5) {
+					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords while expandig macros\n")
+					os.Exit(1)
+				}
+
 				err := true
 				for mm := range macros { // expand macros that are inside macros
 					mn := macros[mm].name
@@ -774,7 +808,7 @@ func expandMacro(macro Macro) []Op {
 				}
 
 				if err {
-					for co := range constants {
+					for co := range constants { // push const value
 						curcon := constants[co]
 
 						if curcon.name == macro.toks[m].scontent {
@@ -831,8 +865,13 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			optoadd := tokenWordAsOp(token)
 			if optoadd.op == OP_ERR {
+				if !(KEYWORD_COUNT == 5) {
+					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
+					os.Exit(1)
+				}
+
 				switch {
-				case token.scontent == "macro": // begin macro parsing
+				case token.scontent == keywordAsString(KEYWORD_MACRO): // begin macro parsing
 					if !((len(tokens)-1) >= i + 1) {
 						loc := token.loc
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
@@ -877,8 +916,14 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							break
 						}
 
-						if tokens[i].scontent == "macro" {
+						if tokens[i].scontent == keywordAsString(KEYWORD_MACRO) {
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+							os.Exit(1)
+						}
+
+						if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside macros is not allowed\n",
 								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 							os.Exit(1)
 						}
@@ -916,10 +961,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 							blockStack, pop = popInt(blockStack)
 
-							if !((tokenWordAsOp(tokens[pop]).op == OP_IF)  ||
-								 (tokenWordAsOp(tokens[pop]).op == OP_ELSE)||
+							if !((tokenWordAsOp(tokens[pop]).op == OP_IF)   ||
+								 (tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
 								 (tokenWordAsOp(tokens[pop]).op == OP_DO)) {
-								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do` or `macro` is not allowed\n",
+								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
 							}
@@ -935,7 +980,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
 						os.Exit(1)
 					}
-				case token.scontent == "include": // end const parsing
+				case token.scontent == keywordAsString(KEYWORD_INCLUDE): // end macro parsing
 					if !((len(tokens)-1) >= i + 1) { // begin include parsing
 						loc := token.loc
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path but got nothing\n",
@@ -968,7 +1013,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					includeops := compileFileIntoOps(pathtofile)
 					ops = append(ops, includeops...)
 					i += 1
-				case token.scontent == "const":  // end include parsing
+				case token.scontent == keywordAsString(KEYWORD_CONST):  // end include parsing
 					if !((len(tokens)-1) >= i + 1) { // begin const parsing
 						loc := token.loc
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name but got nothing\n",
@@ -1013,7 +1058,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					i += 2
 
 					for i < len(tokens) {
-						if tokens[i].scontent == "const" {
+						if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside constants is not allowed\n",
 								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 							os.Exit(1)
@@ -1129,12 +1174,16 @@ var builtinWordsNames []string = []string{
 	"end",
 	"while",
 	"do",
-	"macro",
 	"shl",
 	"shr",
 	"or",
 	"and",
 	"not",
+	"macro",
+	"include",
+	"const",
+	"increment",
+	"reset",
 }
 
 func compileFileIntoOps(filepath string) []Op {
@@ -1142,6 +1191,11 @@ func compileFileIntoOps(filepath string) []Op {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
+	if !(KEYWORD_COUNT == 5) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in builtInWordsNames\n")
+		os.Exit(1)
+	}
+
 
 	tokens := lexfile(filepath)
 	ops    := compileTokensIntoOps(tokens)
