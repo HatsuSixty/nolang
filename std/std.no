@@ -58,5 +58,5 @@ macro isdigit
 end
 
 macro lnot
-  1 -
+  0 =
 end
