@@ -806,7 +806,7 @@ func expandMacro(macro Macro) []Op {
 					operstr: OperStr(macro.toks[m].scontent),
 					loc: macro.toks[m].loc})
 			default:
-				if !(KEYWORD_COUNT == 5) {
+				if !(KEYWORD_COUNT == 6) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords while expandig macros\n")
 					os.Exit(1)
 				}
@@ -827,6 +827,17 @@ func expandMacro(macro Macro) []Op {
 
 						if curcon.name == macro.toks[m].scontent {
 							opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: macro.toks[m].loc})
+							err = false
+							break
+						}
+					}
+				}
+
+				if err {
+					for mem := range memorys {
+						curmem := memorys[mem]
+						if curmem.name == macro.toks[m].scontent {
+							opers = append(opers, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: macro.toks[m].loc})
 							err = false
 							break
 						}
