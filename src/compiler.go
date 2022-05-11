@@ -858,6 +858,38 @@ func expandMacro(macro Macro) []Op {
 	return opers
 }
 
+func checkNameRedefinition(name string, loc Location) {
+	if in(name, builtinWordsNames) {
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
+			loc.f, loc.r, loc.c, name)
+		os.Exit(1)
+	}
+
+	for co := range constants {
+		if constants[co].name == name {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing constant: %s\n",
+				loc.f, loc.r, loc.c, name)
+			os.Exit(1)
+		}
+	}
+
+	for mem := range memorys {
+		if memorys[mem].name == name {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing memory block: %s\n",
+				loc.f, loc.r, loc.c, name)
+			os.Exit(1)
+		}
+	}
+
+	for m := range macros {
+		if macros[m].name == name {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
+				loc.f, loc.r, loc.c, name)
+			os.Exit(1)
+		}
+	}
+}
+
 type Const struct {
 	value int
 	name  string
@@ -924,35 +956,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					macroToks   := []Token{}
 					macroClosed := false
 
-					if in(macroName, builtinWordsNames) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
-							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
-						os.Exit(1)
-					}
-
-					for co := range constants {
-						if constants[co].name == macroName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing constant: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
-							os.Exit(1)
-						}
-					}
-
-					for mem := range memorys {
-						if memorys[mem].name == macroName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing memory block: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
-							os.Exit(1)
-						}
-					}
-
-					for m := range macros {
-						if macros[m].name == macroName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, macroName)
-							os.Exit(1)
-						}
-					}
+					checkNameRedefinition(macroName, tokens[i+1].loc)
 
 					i += 2
 
@@ -1090,35 +1094,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					constToks   := []Token{}
 					constClosed := false
 
-					for m := range macros {
-						if macros[m].name == constName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
-							os.Exit(1)
-						}
-					}
-
-					for co := range constants {
-						if constants[co].name == constName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing constant: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
-							os.Exit(1)
-						}
-					}
-
-					for mem := range memorys {
-						if memorys[mem].name == constName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing memory block: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
-							os.Exit(1)
-						}
-					}
-
-					if in(constName, builtinWordsNames) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
-							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, constName)
-						os.Exit(1)
-					}
+					checkNameRedefinition(constName, tokens[i+1].loc)
 
 					i += 2
 
@@ -1171,35 +1147,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					memoryToks   := []Token{}
 					memoryClosed := false
 
-					for mem := range memorys {
-						if memorys[mem].name == memoryName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing memory block: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, memoryName)
-							os.Exit(1)
-						}
-					}
-
-					for m := range macros {
-						if macros[m].name == memoryName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing macro: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, memoryName)
-							os.Exit(1)
-						}
-					}
-
-					for co := range constants {
-						if constants[co].name == memoryName {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing constant: %s\n",
-								tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, memoryName)
-							os.Exit(1)
-						}
-					}
-
-					if in(memoryName, builtinWordsNames) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
-							tokens[i+1].loc.f, tokens[i+1].loc.r, tokens[i+1].loc.c, memoryName)
-						os.Exit(1)
-					}
+					checkNameRedefinition(memoryName, tokens[i+1].loc)
 
 					i += 2
 
