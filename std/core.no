@@ -1,4 +1,4 @@
-// nolang's core macros
+// nolang's core constants & macros
 
 // sizes
 const sizeof(u64) 8 end
