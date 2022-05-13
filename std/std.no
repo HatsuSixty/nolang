@@ -60,3 +60,6 @@ end
 macro lnot
   0 =
 end
+
+// deprecated
+memory mem 640000 end

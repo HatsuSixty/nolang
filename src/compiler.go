@@ -45,7 +45,6 @@ const (
 	OP_SYSCALL6 OpType = iota
 
 	// memory
-	OP_MEM      OpType = iota
 	OP_LOAD8    OpType = iota
 	OP_STORE8   OpType = iota
 	OP_LOAD16   OpType = iota
@@ -107,7 +106,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 47) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -260,9 +259,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    pop r9\n"             )
 			f.WriteString("    syscall\n"            )
 			f.WriteString("    push rax\n"           )
-		case OP_MEM:
-			f.WriteString("    ;; -- mem --\n"       )
-			f.WriteString("    push mem\n"           )
 		case OP_LOAD8:
 			f.WriteString("    ;; -- load8 --\n"     )
 			f.WriteString("    pop rax\n"            )
@@ -470,7 +466,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    mov rdi, 0\n"             )
 	f.WriteString("    syscall\n"                )
 	f.WriteString("segment .bss\n"               )
-	f.WriteString("mem: resb " + strconv.Itoa(MEM_CAP) + "\n")
 	for mem := range memorys {
 		curm := memorys[mem]
 		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
@@ -502,7 +497,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 48) {
+		if !(OP_COUNT == 47) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -687,7 +682,7 @@ func keywordAsString(key Keyword) string {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 47) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -717,8 +712,6 @@ func tokenWordAsOp(token Token) Op {
 		return Op{op: OP_SYSCALL5, loc: token.loc}
 	case token.scontent == "syscall6":
 		return Op{op: OP_SYSCALL6, loc: token.loc}
-	case token.scontent == "mem":
-		return Op{op: OP_MEM, loc: token.loc}
 	case token.scontent == "@8":
 		return Op{op: OP_LOAD8, loc: token.loc}
 	case token.scontent == "!8":
@@ -989,7 +982,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 
-						if !(OP_COUNT == 48) {
+						if !(OP_COUNT == 47) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
@@ -1255,7 +1248,6 @@ var builtinWordsNames []string = []string{
 	"syscall4",
 	"syscall5",
 	"syscall6",
-	"mem",
 	"@8",
 	"!8",
 	"@16",
@@ -1296,7 +1288,7 @@ var builtinWordsNames []string = []string{
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 47) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
