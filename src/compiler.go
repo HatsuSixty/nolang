@@ -87,6 +87,7 @@ const (
 
 	// cmd line args
 	OP_ARGV     OpType = iota
+	OP_ARGC     OpType = iota
 
 	// others
 	OP_ERR      OpType = iota
@@ -109,7 +110,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -159,9 +160,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    ret\n"                              )
 	f.WriteString("global _start\n"                        )
 	f.WriteString("_start:\n"                              )
-	f.WriteString("    pop rax\n"                          )
-	f.WriteString("    pop rbx\n"                          )
-	f.WriteString("    mov [argv_ptr], rbx\n"              )
+	f.WriteString("    mov [args_ptr], rsp\n"              )
 	for i := range program {
 		f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
 		switch program[i].op {
@@ -464,7 +463,14 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    push rax\n"           )
 		case OP_ARGV:
 			f.WriteString("    ;; -- argv --\n"      )
-			f.WriteString("    push argv_ptr\n"      )
+			f.WriteString("    mov rax, [args_ptr]\n")
+			f.WriteString("    add rax, 8\n"         )
+			f.WriteString("    push rax\n"           )
+		case OP_ARGC:
+			f.WriteString("    ;; -- argc --\n"      )
+			f.WriteString("    mov rax, [args_ptr]\n")
+			f.WriteString("    mov rax, [rax]\n"     )
+			f.WriteString("    push rax\n"           )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -479,7 +485,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		curm := memorys[mem]
 		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
 	}
-	f.WriteString("argv_ptr: resb 8\n"           )
+	f.WriteString("args_ptr: resb 8\n"           )
 	f.WriteString("segment .data\n"              )
 	for s := range strings {
 		curs := strings[s]
@@ -507,7 +513,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 48) {
+		if !(OP_COUNT == 49) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -692,7 +698,7 @@ func keywordAsString(key Keyword) string {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -786,6 +792,8 @@ func tokenWordAsOp(token Token) Op {
 		return Op{op: OP_NOT, loc: token.loc}
 	case token.scontent == "argv":
 		return Op{op: OP_ARGV, loc: token.loc}
+	case token.scontent == "argc":
+		return Op{op: OP_ARGC, loc: token.loc}
 	default:
 		return Op{op: OP_ERR}
 	}
@@ -994,7 +1002,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 
-						if !(OP_COUNT == 48) {
+						if !(OP_COUNT == 49) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
@@ -1298,10 +1306,11 @@ var builtinWordsNames []string = []string{
 	"reset",
 	"memory",
 	"argv",
+	"argc",
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 48) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
