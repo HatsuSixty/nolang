@@ -1,9 +1,9 @@
-macro write 1 1 syscall3 end
+include "std.no"
 
-macro N 100 end
+const N 100 end
 
-macro row         mem end
-macro display mem N + end
+memory row           N end
+memory display   N 1 + end
 
 macro main
    row N 2 - + 1 swap !8
@@ -19,7 +19,7 @@ macro main
          1 +
       end drop
 
-      N 1 + display write drop
+      N 1 + display puts
 
       row     @8 1 shl
       row 1 + @8

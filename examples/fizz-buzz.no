@@ -1,28 +1,14 @@
-macro write
-  1 1 syscall3 drop
-end
+include "std.no"
 
-macro \n
-  10 mem !8 1 mem write
-end
-
-macro mod
-  divmod swap drop
-end
-
-macro main
-  1 while dup 100 < do
-    dup 15 mod 0 = if
-      "FizzBuzz" write \n
-    else dup 3 mod 0 = if
-      "Fizz"     write \n
-    else dup 5 mod 0 = if
-      "Buzz"     write \n
-    else
-      dup print
-    end end end
-    1 +
-  end drop
-end
-
-main
+1 while dup 100 < do
+  dup 15 mod 0 = if
+    "FizzBuzz\n" puts
+  else dup 3 mod 0 = if
+    "Fizz\n"     puts
+  else dup 5 mod 0 = if
+    "Buzz\n"     puts
+  else
+    dup print
+  end end end
+  1 +
+end drop
