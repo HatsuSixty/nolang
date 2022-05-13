@@ -5,6 +5,7 @@ import (
 	"unicode"
 	"os/exec"
 	"os"
+	"bytes"
 )
 
 func isError(err error) bool {
@@ -59,15 +60,19 @@ func cmdRunEchoInfo(args string, silent bool) {
 		fmt.Println("[CMD]", args)
 	}
 
-	command := exec.Command("/bin/sh", "-c", args)
+	var buf bytes.Buffer
 
-	stdout, err := command.Output()
+	cmd := exec.Command("/bin/sh", "-c", args)
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
 
-	if err != nil {
-		fmt.Errorf("ERROR: Could not run command\n")
+	err := cmd.Run()
+	if !silent && !(buf.String() == "") {
+		fmt.Print(buf.String())
 	}
 
-	if !silent && !(string(stdout) == "") {
-		fmt.Print(string(stdout))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Shell command error: %s\n", err)
+		os.Exit(1)
 	}
 }
