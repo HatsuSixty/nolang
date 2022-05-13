@@ -1,0 +1,52 @@
+/// Parts stolen (because the is no reason to reimplement)
+/// from tsoding's porth <https://gitlab.com/tsoding/porth>
+
+/// temporary buffer
+const TMP_CAP 8 1024 * 1024 * end
+memory tmp-start TMP_CAP end
+memory tmp-size sizeof(u64) end
+
+macro tmp-clean 0 tmp-size !64 end
+macro tmp-end tmp-start tmp-size @64 + end
+macro tmp-rewind tmp-start ptr-diff tmp-size !int end
+
+macro tmp-alloc
+  dup tmp-size @64 + TMP_CAP > if
+    "ERROR: Temporary memory buffer capacity exceeded. Need to call tmp-clean more often\n" eputs
+    1 exit
+  end
+
+  dup 0 tmp-end memset
+  tmp-size @64 rot + tmp-size !64
+end
+
+macro tmp-append over tmp-alloc memcpy end
+macro tmp-append-ptr
+  sizeof(ptr) tmp-alloc !ptr
+end
+////////////
+
+macro cstrlen
+  dup
+  while dup @8 0 != do 1 + end
+  swap -
+end
+
+macro cstreq
+  while
+    over @8 0 != over @8 0 != and if
+       over @8 over @8 =
+    else
+       false
+    end
+  do
+    1 + swap 1 +
+  end
+  @8 0 =
+  swap @8 0 =
+  and
+end
+
+macro cstr-to-str
+  dup cstrlen swap
+end

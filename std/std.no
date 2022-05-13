@@ -1,8 +1,8 @@
 /// nolang's standard library
-// some parts stolen from tsoding's porth <https://gitlab.com/tsoding/porth>
 
 include "core.no"
 include "linux.no"
+include "porth.no"
 
 macro nop end
 
@@ -13,31 +13,6 @@ const false 0 end
 const stdin  0 end
 const stdout 1 end
 const stderr 2 end
-
-macro cstrlen
-  dup
-  while dup @8 0 != do 1 + end
-  swap -
-end
-
-macro cstreq
-  while
-    over @8 0 != over @8 0 != and if
-       over @8 over @8 =
-    else
-       false
-    end
-  do
-    1 + swap 1 +
-  end
-  @8 0 =
-  swap @8 0 =
-  and
-end
-
-macro cstr-to-str
-  dup cstrlen swap
-end
 
 macro fputs
   write drop
@@ -57,8 +32,42 @@ macro isdigit
   and
 end
 
+macro tmp-str-to-cstr over 1 + tmp-alloc memcpy end
+
+//////
+
 macro lnot
   0 =
+end
+
+memory data sizeof(ptr) end
+memory byte sizeof(u64) end
+macro memset
+  data !64
+  byte !64
+  data @64 swap
+  while dup 0 > do
+    byte @64 data @64 !8
+    data inc64
+    1 -
+  end
+  drop
+end
+
+memory src sizeof(ptr) end
+memory dst sizeof(ptr) end
+memory result sizeof(ptr) end
+macro memcpy
+  dst !64
+  src !64
+  dst @64 swap // result
+  while dup 0 > do
+    src @64 @8
+    dst @64 !8
+    src inc64
+    dst inc64
+    1 -
+  end drop
 end
 
 // deprecated
