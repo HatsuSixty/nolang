@@ -220,7 +220,7 @@ func main() {
 		usage()
 		os.Exit(0)
 	default:
-		fmt.Println("ERROR: Unknown subcommand: %s\n", subcommand)
+		fmt.Printf("ERROR: Unknown subcommand: %s\n", subcommand)
 		usage()
 		os.Exit(4)
 	}
