@@ -138,7 +138,7 @@ func runTestForFolder(folder string) {
 		}
 	}
 
-	fmt.Printf("Failed %d, Ignored %d\n", testfailed, ignored)
+	fmt.Printf("\nFailed %d, Ignored %d\n", testfailed, ignored)
 }
 
 func saveTestCase(tc TestCase, file string) {
