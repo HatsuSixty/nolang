@@ -177,7 +177,28 @@ func updateOutputForFolder(folder string) {
 	}
 }
 
+func usage() {
+	fmt.Println("Usage:"                                                                                   )
+	fmt.Println("    ./test <SUBCOMMAND>"                                                                  )
+	fmt.Println("Subcommands:"                                                                             )
+	fmt.Println("    update   [FOLDER]         Update output of files in [FOLDER], [FOLDER] is optional"   )
+	fmt.Println("    run|full [FOLDER]         Run a test for each file in [FOLDER], [FOLDER] is optional" )
+	fmt.Println("    help                      Print this help & exit"                                     )
+}
+
 func main() {
+	if !(len(os.Args) > 1) {
+		fmt.Fprintf(os.Stderr, "ERROR: No argument was provided\n")
+		usage()
+		os.Exit(4)
+	}
+
+	subcommand := os.Args[1]
+	folder     := "./tests/"
+	if len(os.Args) > 2 {
+		folder  = os.Args[2]
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {}
 
@@ -187,6 +208,17 @@ func main() {
 	default:                        nobin = "no"
 	}
 
-	//	updateOutputForFolder("../tests/")
-	runTestForFolder("../tests/")
+	switch {
+	case subcommand == "update":
+		updateOutputForFolder(folder)
+	case subcommand == "run" || subcommand == "full":
+		runTestForFolder(folder)
+	case subcommand == "help":
+		usage()
+		os.Exit(0)
+	default:
+		fmt.Println("ERROR: Unknown subcommand: %s\n", subcommand)
+		usage()
+		os.Exit(4)
+	}
 }
