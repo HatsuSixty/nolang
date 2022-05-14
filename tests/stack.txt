@@ -1,0 +1,8 @@
+stdout:::
+[CMD] yasm -felf64 output.asm
+[CMD] ld -o output output.o
+[CMD] /home/rosyx/Programming/my/nolang/output
+20
+10
+20
+stderr:::
