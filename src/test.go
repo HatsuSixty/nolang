@@ -24,6 +24,7 @@ func fileNameWithoutExt(fileName string) string {
 }
 
 func cmdRunReturnTestCase(args string) TestCase {
+	fmt.Printf("[CMD] %s\n", args)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -101,6 +102,7 @@ func loadTestCaseForFile(file string, folder string) (TestCase, bool) {
 }
 
 func runTestForFile(file string, folder string) {
+	fmt.Printf("[INFO] Testing %s\n", file)
 	wd, err := os.Getwd()
 	if err != nil {}
 	cmdRunEchoInfo("rm -f " + wd + "/" + folder + "/output*", true)
@@ -151,6 +153,7 @@ func saveTestCase(tc TestCase, file string) {
 }
 
 func updateOutputForFile(file string, folder string) {
+	fmt.Printf("[INFO] Updating output of file %s\n", file)
 	wd, err := os.Getwd()
 	if err != nil {}
 	cmdRunEchoInfo("rm -f " + wd + "/" + folder + "/output*", true)
