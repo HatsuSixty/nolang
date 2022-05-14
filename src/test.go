@@ -96,6 +96,7 @@ func loadTestCaseForFile(file string, folder string) (TestCase, bool) {
 		fmt.Fprintf(os.Stderr, "[WARNING] No output file for `%s` encountered, just testing compiles.\n",
 			file)
 		ignoredfile = true
+		ignored += 1
 	}
 
 	return TestCase{stdout: tstdout, stderr: tstderr}, ignoredfile
@@ -136,6 +137,8 @@ func runTestForFolder(folder string) {
 			}
 		}
 	}
+
+	fmt.Printf("Failed %d, Ignored %d\n", testfailed, ignored)
 }
 
 func saveTestCase(tc TestCase, file string) {
