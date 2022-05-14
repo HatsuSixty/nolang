@@ -1064,7 +1064,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 					if !(tokens[i + 1].kind == TOKEN_STR) {
 						loc := tokens[i + 1].loc
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path to be an word\n",
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path to be an string\n",
 							loc.f, loc.r, loc.c)
 						os.Exit(1)
 					}
@@ -1076,10 +1076,10 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					pathtofile  := ""
 
 					switch {
-					case fileExists(wd + "/" + includepath):
-						pathtofile = wd + "/" + includepath
-					case fileExists(wd + "/std/" + includepath):
-						pathtofile = wd + "/std/" + includepath
+					case fileExists(wd + "/" + includepath):       pathtofile = wd + "/" + includepath
+					case fileExists(wd + "/std/" + includepath):   pathtofile = wd + "/std/" + includepath
+					case fileExists(wd + "/../" + includepath):     pathtofile = wd + "/../" + includepath
+					case fileExists(wd + "/../std/" + includepath): pathtofile = wd + "/../std/" + includepath
 					default:
 						pathtofile = includepath
 					}

@@ -1,3 +1,5 @@
+include "std.no"
+
 60 mem !8
 mem @8 print
 
