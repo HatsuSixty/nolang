@@ -19,6 +19,7 @@ const (
 	KEYWORD_INCREMENT Keyword = iota
 	KEYWORD_RESET     Keyword = iota
 	KEYWORD_MEMORY    Keyword = iota
+	KEYWORD_HERE      Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -679,7 +680,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 6) {
+	if !(KEYWORD_COUNT == 7) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -692,6 +693,7 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_INCREMENT: return "increment"
 	case KEYWORD_MACRO:     return "macro"
 	case KEYWORD_MEMORY:    return "memory"
+	case KEYWORD_HERE:      return "here"
 
 	}
 	return "unreachable"
@@ -819,7 +821,7 @@ func expandMacro(macro Macro) []Op {
 					operstr: OperStr(macro.toks[m].scontent),
 					loc: macro.toks[m].loc})
 			default:
-				if !(KEYWORD_COUNT == 6) {
+				if !(KEYWORD_COUNT == 7) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords while expandig macros\n")
 					os.Exit(1)
 				}
@@ -846,7 +848,7 @@ func expandMacro(macro Macro) []Op {
 					}
 				}
 
-				if err {
+				if err { // push mem ptr
 					for mem := range memorys {
 						curmem := memorys[mem]
 						if curmem.name == macro.toks[m].scontent {
@@ -855,6 +857,12 @@ func expandMacro(macro Macro) []Op {
 							break
 						}
 					}
+				}
+
+				if err { // push loc as str
+					loct := macro.toks[m].loc.f + ":" + strconv.Itoa(macro.toks[m].loc.r) + ":" + strconv.Itoa(macro.toks[m].loc.c)
+					opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
+					err = false
 				}
 
 				if err {
@@ -943,7 +951,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			optoadd := tokenWordAsOp(token)
 			if optoadd.op == OP_ERR {
-				if !(KEYWORD_COUNT == 6) {
+				if !(KEYWORD_COUNT == 7) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 					os.Exit(1)
 				}
@@ -1195,7 +1203,11 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					memoryVal := evaluateAtCompileTime(memoryToks, memoryKeyLoc)
 					memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
 					memcnt += 1
-				default: // end memory parsing
+				case token.scontent == keywordAsString(KEYWORD_HERE): // end memory parsing
+					// begin here parsing
+					loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
+					ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
+				default: // end here parsing
 					err := true
 
 					for m := range macros {
@@ -1307,6 +1319,7 @@ var builtinWordsNames []string = []string{
 	"memory",
 	"argv",
 	"argc",
+	"here",
 }
 
 func compileFileIntoOps(filepath string) []Op {
@@ -1314,7 +1327,7 @@ func compileFileIntoOps(filepath string) []Op {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
-	if !(KEYWORD_COUNT == 6) {
+	if !(KEYWORD_COUNT == 7) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in builtInWordsNames\n")
 		os.Exit(1)
 	}
