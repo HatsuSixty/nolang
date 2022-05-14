@@ -8,7 +8,7 @@ memory tmp-size sizeof(u64) end
 
 macro tmp-clean 0 tmp-size !64 end
 macro tmp-end tmp-start tmp-size @64 + end
-macro tmp-rewind tmp-start ptr-diff tmp-size !int end
+macro tmp-rewind tmp-start ptr-diff tmp-size !64 end
 
 macro tmp-alloc
   dup tmp-size @64 + TMP_CAP > if
@@ -22,7 +22,7 @@ end
 
 macro tmp-append over tmp-alloc memcpy end
 macro tmp-append-ptr
-  sizeof(ptr) tmp-alloc !ptr
+  sizeof(ptr) tmp-alloc !64
 end
 ////////////
 
@@ -49,4 +49,8 @@ end
 
 macro cstr-to-str
   dup cstrlen swap
+end
+
+macro ptr-diff
+  -
 end
