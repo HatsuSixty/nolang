@@ -90,6 +90,9 @@ const (
 	OP_ARGV     OpType = iota
 	OP_ARGC     OpType = iota
 
+	// bindings
+	OP_BIND     OpType = iota
+
 	// others
 	OP_ERR      OpType = iota
 
@@ -111,7 +114,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 49) {
+	if !(OP_COUNT == 50) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -472,6 +475,9 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    mov rax, [args_ptr]\n")
 			f.WriteString("    mov rax, [rax]\n"     )
 			f.WriteString("    push rax\n"           )
+		case OP_BIND:
+			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_BIND is not implemented yet\n")
+			os.Exit(1)
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -514,7 +520,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 49) {
+		if !(OP_COUNT == 50) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -700,7 +706,7 @@ func keywordAsString(key Keyword) string {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 49) {
+	if !(OP_COUNT == 50) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -1010,7 +1016,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 
-						if !(OP_COUNT == 49) {
+						if !(OP_COUNT == 50) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
@@ -1323,7 +1329,7 @@ var builtinWordsNames []string = []string{
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 49) {
+	if !(OP_COUNT == 50) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
