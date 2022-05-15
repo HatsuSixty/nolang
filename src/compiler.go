@@ -20,6 +20,11 @@ const (
 	KEYWORD_RESET     Keyword = iota
 	KEYWORD_MEMORY    Keyword = iota
 	KEYWORD_HERE      Keyword = iota
+	KEYWORD_IF        Keyword = iota
+	KEYWORD_ELSE      Keyword = iota
+	KEYWORD_WHILE     Keyword = iota
+	KEYWORD_DO        Keyword = iota
+	KEYWORD_END       Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -513,87 +518,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 
 /////////// PARSER ///////////
 
-func crossreferenceBlocks(program []Op) []Op {
-	mprogram := program
-	var stack []int
-	var ifIp    int
-	var blockIp int
-	var whileIp int
-	for i := range mprogram {
-		if !(OP_COUNT == 50) {
-			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
-			os.Exit(1)
-		}
-
-		switch mprogram[i].op {
-		case OP_IF:
-			stack = append(stack, i)
-		case OP_ELSE:
-			if !(len(stack) > 0) {
-				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
-					loc.f, loc.r, loc.c)
-				os.Exit(1)
-			}
-
-			stack, ifIp = popInt(stack)
-			if !(mprogram[ifIp].op == OP_IF) {
-				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
-					loc.f, loc.r, loc.c)
-				os.Exit(1)
-			}
-
-			mprogram[ifIp].operand = Operand(i + 1)
-			stack = append(stack, i)
-		case OP_END:
-			if !(len(stack) > 0) {
-				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `end` does not have any block to close\n",
-					loc.f, loc.r, loc.c)
-				os.Exit(1)
-			}
-
-			stack, blockIp = popInt(stack)
-
-			switch {
-			case (mprogram[blockIp].op == OP_IF) || (mprogram[blockIp].op == OP_ELSE):
-				mprogram[blockIp].operand = Operand(i)
-				mprogram[i].operand = Operand(i + 1)
-			case mprogram[blockIp].op == OP_DO:
-				mprogram[i].operand       = mprogram[blockIp].operand
-				mprogram[blockIp].operand = Operand(i + 1)
-			default:
-				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n", loc.f, loc.r, loc.c)
-				os.Exit(1)
-			}
-		case OP_WHILE:
-			stack = append(stack, i)
-		case OP_DO:
-			if !(len(stack) > 0) {
-				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `do` does not have any block to close\n",
-					loc.f, loc.r, loc.c)
-				os.Exit(1)
-			}
-
-			stack, whileIp = popInt(stack)
-			program[i].operand = Operand(whileIp)
-			stack = append(stack, i)
-		}
-	}
-	if !(len(stack) == 0) {
-		var unclosedBlock int
-		stack, unclosedBlock = popInt(stack)
-		loc := mprogram[unclosedBlock].loc
-		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", loc.f, loc.r, loc.c)
-		os.Exit(1)
-	}
-
-	return mprogram
-}
-
 var compiletimecount int = 0
 func evaluateAtCompileTime(toks []Token, loc Location) int {
 	stack := []int{}
@@ -686,7 +610,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 7) {
+	if !(KEYWORD_COUNT == 12) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -700,13 +624,18 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_MACRO:     return "macro"
 	case KEYWORD_MEMORY:    return "memory"
 	case KEYWORD_HERE:      return "here"
+	case KEYWORD_IF:        return "if"
+	case KEYWORD_ELSE:      return "else"
+	case KEYWORD_WHILE:     return "while"
+	case KEYWORD_DO:        return "do"
+	case KEYWORD_END:       return "end"
 
 	}
 	return "unreachable"
 }
 
 func stringAsKeyword(str string) Keyword {
-	if !(KEYWORD_COUNT == 7) {
+	if !(KEYWORD_COUNT == 12) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in stringAsKeyword\n")
 		os.Exit(1)
 	}
@@ -720,6 +649,11 @@ func stringAsKeyword(str string) Keyword {
 	case "macro":     return KEYWORD_MACRO
 	case "memory":    return KEYWORD_MEMORY
 	case "here":      return KEYWORD_HERE
+	case "if":        return KEYWORD_IF
+	case "else":      return KEYWORD_ELSE
+	case "while":     return KEYWORD_WHILE
+	case "do":        return KEYWORD_DO
+	case "end":       return KEYWORD_END
 	default:          return Keyword(404)
 
 	}
@@ -784,16 +718,6 @@ func tokenWordAsOp(token Token) Op {
 		return Op{op: OP_LE, loc: token.loc}
 	case token.scontent == "!=":
 		return Op{op: OP_NE, loc: token.loc}
-	case token.scontent == "if":
-		return Op{op: OP_IF, loc: token.loc}
-	case token.scontent == "else":
-		return Op{op: OP_ELSE, loc: token.loc}
-	case token.scontent == "end":
-		return Op{op: OP_END, loc: token.loc}
-	case token.scontent == "while":
-		return Op{op: OP_WHILE, loc: token.loc}
-	case token.scontent == "do":
-		return Op{op: OP_DO, loc: token.loc}
 	case token.scontent == "dup":
 		return Op{op: OP_DUP, loc: token.loc}
 	case token.scontent == "drop":
@@ -860,9 +784,17 @@ func expandMacro(macro Macro) []Op {
 	return opers
 }
 
+var blockStack []int
+
 func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 	token := tokens[i]
-	if !(KEYWORD_COUNT == 7) {
+	opi   := len(ops)
+
+	var ifIp int
+	var whileIp int
+	var blockIp int
+
+	if !(KEYWORD_COUNT == 12) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 		os.Exit(1)
 	}
@@ -1119,6 +1051,34 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
 		ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
 		// end here parsing
+	case token.scontent == keywordAsString(KEYWORD_IF):
+		ops = append(ops, Op{op: OP_IF, loc: token.loc})
+		blockStack = append(blockStack, opi)
+	case token.scontent == keywordAsString(KEYWORD_ELSE):
+		ops = append(ops, Op{op: OP_ELSE, loc: token.loc})
+		blockStack, ifIp = popInt(blockStack)
+		ops[ifIp].operand = Operand(opi + 1)
+		blockStack = append(blockStack, opi)
+	case token.scontent == keywordAsString(KEYWORD_WHILE):
+		ops = append(ops, Op{op: OP_WHILE, loc: token.loc})
+		blockStack = append(blockStack, opi)
+	case token.scontent == keywordAsString(KEYWORD_DO):
+		ops = append(ops, Op{op: OP_DO, loc: token.loc})
+		blockStack, whileIp = popInt(blockStack)
+		ops[opi].operand = Operand(whileIp)
+		blockStack = append(blockStack, opi)
+		ops = append(ops, Op{op: OP_DO, })
+	case token.scontent == keywordAsString(KEYWORD_END):
+		ops = append(ops, Op{op: OP_END, loc: token.loc})
+		blockStack, blockIp = popInt(blockStack)
+		switch {
+		case (ops[blockIp].op == OP_IF) || (ops[blockIp].op == OP_ELSE):
+			ops[blockIp].operand = Operand(opi)
+			ops[opi].operand = Operand(opi + 1)
+		case ops[blockIp].op == OP_DO:
+			ops[opi].operand = ops[blockIp].operand
+			ops[blockIp].operand = Operand(opi + 1)
+		}
 	}
 	return i, ops
 }
@@ -1256,7 +1216,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		}
 		i += 1
 	}
-	return crossreferenceBlocks(ops)
+	return ops
 }
 
 //////////////////////////////
