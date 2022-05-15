@@ -34,6 +34,7 @@ const (
 	OP_PRINT    OpType = iota
 	OP_PUSH_INT OpType = iota
 	OP_PUSH_STR OpType = iota
+	OP_PUSH_CSTR OpType = iota
 	OP_PUSH_MEM OpType = iota
 
 	// syscalls
@@ -111,7 +112,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 49) {
+	if !(OP_COUNT == 50) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -175,6 +176,11 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			strings = append(strings, Ctring{str: string(program[i].operstr), id: id})
 			strcnt += 1
 			f.WriteString("    push " + strconv.Itoa(len(program[i].operstr)) + "\n")
+			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
+		case OP_PUSH_CSTR:
+			f.WriteString("    ;; -- push cstr --\n" )
+			id := strcnt
+			strings = append(strings, Ctring{str: string(program[i].operstr), id: id})
 			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
 		case OP_PUSH_MEM:
 			f.WriteString("    ;; -- push mem --\n"  )
@@ -514,7 +520,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 49) {
+		if !(OP_COUNT == 50) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -720,7 +726,7 @@ func stringAsKeyword(str string) Keyword {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 49) {
+	if !(OP_COUNT == 50) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -830,7 +836,7 @@ func wordExists(str string) bool {
 
 func expandMacro(macro Macro) []Op {
 	opers := []Op{}
-	if !(TOKEN_COUNT == 4) {
+	if !(TOKEN_COUNT == 5) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of tokens while handling tokens for macro expansion\n")
 		os.Exit(1)
 	}
@@ -842,6 +848,8 @@ func expandMacro(macro Macro) []Op {
 			opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(macro.toks[m].icontent), loc: macro.toks[m].loc})
 		case TOKEN_STR:
 			opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
+		case TOKEN_CSTR:
+			opers = append(opers, Op{op: OP_PUSH_CSTR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
 		case TOKEN_WORD:
 			opers = append(opers, handleWord(macro.toks[m])...)
 		case TOKEN_KEYWORD:
@@ -913,7 +921,7 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 			}
 
 
-			if !(OP_COUNT == 49) {
+			if !(OP_COUNT == 50) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 				os.Exit(1)
 			}
@@ -1222,7 +1230,7 @@ var memcnt  int = 0
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
 
-	if !(TOKEN_COUNT == 4) {
+	if !(TOKEN_COUNT == 5) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in compileTokensIntoOps\n")
 		os.Exit(1)
 	}
@@ -1236,6 +1244,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_STR:
 			ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(token.scontent), loc: token.loc})
+		case TOKEN_CSTR:
+			ops = append(ops, Op{op: OP_PUSH_CSTR, operstr: OperStr(token.scontent), loc: token.loc})
 		case TOKEN_WORD:
 			ops = append(ops, handleWord(token)...)
 		case TOKEN_KEYWORD:

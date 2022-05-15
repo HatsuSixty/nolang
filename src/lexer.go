@@ -26,6 +26,7 @@ const (
 	TOKEN_WORD    TokenKind = iota
 	TOKEN_KEYWORD TokenKind = iota
 	TOKEN_STR     TokenKind = iota
+	TOKEN_CSTR    TokenKind = iota
 	TOKEN_COUNT   TokenKind = iota
 )
 
@@ -50,7 +51,7 @@ func lexline(line string, loc Location) []Token {
 
 	line += " "
 
-	if !(TOKEN_COUNT == 4) {
+	if !(TOKEN_COUNT == 5) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile\n")
 		os.Exit(1)
 	}
@@ -149,6 +150,8 @@ func lexline(line string, loc Location) []Token {
 							str += "\""
 						case '\\':
 							str += "\\"
+						case '0':
+							str += "\000"
 						default:
 							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown escape character: %c\n",
 								loc.f, loc.r, c + 1, escapechar)
@@ -183,10 +186,13 @@ func lexline(line string, loc Location) []Token {
 				}
 
 				ischar := false
+				iscstr := false
 
 				switch {
 				case postfix == "ch":
 					ischar = true
+				case postfix == "c":
+					iscstr = true
 				default:
 					if postfix != "" {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown postfix: %s\n",
@@ -207,7 +213,11 @@ func lexline(line string, loc Location) []Token {
 						Token{kind: TOKEN_INT,
 							icontent: int(str[0]),
 							loc: Location{loc.f, loc.r, c - len(str) + 1}})
-
+				case iscstr:
+					tokens = append(tokens,
+						Token{kind: TOKEN_CSTR,
+							scontent: str + "\000",
+							loc: Location{loc.f, loc.r, c - len(str) + 1}})
 				default:
 					tokens = append(tokens,
 						Token{kind: TOKEN_STR,
