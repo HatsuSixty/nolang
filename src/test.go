@@ -41,7 +41,7 @@ func cmdRunReturnTestCase(args string) TestCase {
 		fmt.Fprintf(os.Stderr, "        " + stdout.String() + "\n")
 		fmt.Fprintf(os.Stderr, "    stderr:\n")
 		fmt.Fprintf(os.Stderr, "        " + stderr.String() + "\n")
-		os.Exit(1)
+		testfailed += 1
 	}
 	return TestCase{stdout: stdout.String(), stderr: stderr.String()}
 }

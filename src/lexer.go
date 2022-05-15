@@ -22,10 +22,11 @@ type Location struct {
 
 type TokenKind int
 const (
-	TOKEN_INT   TokenKind = iota
-	TOKEN_WORD  TokenKind = iota
-	TOKEN_STR   TokenKind = iota
-	TOKEN_COUNT TokenKind = iota
+	TOKEN_INT     TokenKind = iota
+	TOKEN_WORD    TokenKind = iota
+	TOKEN_KEYWORD TokenKind = iota
+	TOKEN_STR     TokenKind = iota
+	TOKEN_COUNT   TokenKind = iota
 )
 
 type Token struct {
@@ -35,6 +36,13 @@ type Token struct {
 	loc      Location
 }
 
+func isKeyword(str string) bool {
+	if (stringAsKeyword(str) != Keyword(404)) && !isQuote(rune(str[0])) {
+		return true
+	}
+	return false
+}
+
 //////////////
 
 func lexline(line string, loc Location) []Token {
@@ -42,7 +50,7 @@ func lexline(line string, loc Location) []Token {
 
 	line += " "
 
-	if !(TOKEN_COUNT == 3) {
+	if !(TOKEN_COUNT == 4) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of Tokens in lexfile\n")
 		os.Exit(1)
 	}
@@ -80,7 +88,20 @@ func lexline(line string, loc Location) []Token {
 						icontent: i,
 						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
 
-			case !isQuote(rune(finalstring[0])):
+			case isKeyword(finalstring):
+				for ch := range finalstring {
+					if isQuote(rune(finalstring[ch])) {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: String prefixes are not allowed\n",
+							loc.f, loc.r, c - len(finalstring))
+						os.Exit(1)
+					}
+				}
+				tokens = append(tokens,
+					Token{kind: TOKEN_KEYWORD,
+						scontent: finalstring,
+						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
+
+			case !isQuote(rune(finalstring[0])) && !isKeyword(finalstring):
 				for ch := range finalstring {
 					if isQuote(rune(finalstring[ch])) {
 						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: String prefixes are not allowed\n",
@@ -92,6 +113,7 @@ func lexline(line string, loc Location) []Token {
 					Token{kind: TOKEN_WORD,
 						scontent: finalstring,
 						loc: Location{loc.f, loc.r, c - len(finalstring) + 1}})
+
 
 			case isQuote(rune(finalstring[0])):
 				c -= len(finalstring)
