@@ -828,7 +828,8 @@ func expandMacro(macro Macro) []Op {
 		os.Exit(1)
 	}
 
-	for m := range macro.toks {
+	m := 0
+	for m < len(macro.toks) {
 		switch macro.toks[m].kind {
 		case TOKEN_INT:
 			opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(macro.toks[m].icontent), loc: macro.toks[m].loc})
@@ -837,11 +838,274 @@ func expandMacro(macro Macro) []Op {
 		case TOKEN_WORD:
 			opers = append(opers, handleWord(macro.toks[m])...)
 		case TOKEN_KEYWORD:
-			fmt.Fprintf(os.Stderr, "TODO: not implemented yet (keywords)\n")
-			os.Exit(1)
+			m, opers = handleKeyword(m, macro.toks, opers)
 		}
+		m += 1
 	}
 	return opers
+}
+
+func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
+	token := tokens[i]
+	if !(KEYWORD_COUNT == 7) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
+		os.Exit(1)
+	}
+
+	switch {
+	case token.scontent == keywordAsString(KEYWORD_MACRO): // begin macro parsing
+		if !((len(tokens)-1) >= i + 1) {
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i + 1].kind == TOKEN_WORD) {
+			loc := tokens[i + 1].loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name to be an word\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		macroKeyLoc := token.loc
+		macroName   := tokens[i + 1].scontent
+		macroToks   := []Token{}
+		macroClosed := false
+
+		checkNameRedefinition(macroName, tokens[i+1].loc)
+
+		i += 2
+
+		blockStack := []int{}
+		pop        := 0
+		if pop == 0 {}
+		for i < len(tokens) {
+			if tokenWordAsOp(tokens[i]).op == OP_END && len(blockStack) == 0 {
+				macroClosed = true
+				break
+			}
+
+			// @disallow inside macros
+			if tokens[i].scontent == keywordAsString(KEYWORD_MACRO) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside macros is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside macros is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+
+			if !(OP_COUNT == 49) {
+				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
+				os.Exit(1)
+			}
+
+			switch {
+			case tokenWordAsOp(tokens[i]).op == OP_IF ||
+				tokenWordAsOp(tokens[i]).op == OP_DO:
+				blockStack = append(blockStack, i)
+			case tokenWordAsOp(tokens[i]).op == OP_ELSE:
+				if !(len(blockStack) > 0) {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
+						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+					os.Exit(1)
+				}
+
+				blockStack, pop = popInt(blockStack)
+				if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
+						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+					os.Exit(1)
+				}
+
+				blockStack = append(blockStack, i)
+			case tokenWordAsOp(tokens[i]).op == OP_END:
+				if !(len(blockStack) > 0) {
+					fmt.Fprintf(os.Stderr, "%s:%s:%d: ERROR: `end` does not have any block to close\n",
+						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+					os.Exit(1)
+				}
+
+				blockStack, pop = popInt(blockStack)
+
+				if !((tokenWordAsOp(tokens[pop]).op == OP_IF)   ||
+					(tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
+					(tokenWordAsOp(tokens[pop]).op == OP_DO)) {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n",
+						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+					os.Exit(1)
+				}
+			}
+
+			macroToks = append(macroToks, tokens[i])
+			i += 1
+		}
+
+		macros = append(macros, Macro{name: macroName, toks: macroToks})
+
+		if !macroClosed {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
+			os.Exit(1)
+		}
+	case token.scontent == keywordAsString(KEYWORD_INCLUDE): // end macro parsing
+		if !((len(tokens)-1) >= i + 1) { // begin include parsing
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path but got nothing\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i + 1].kind == TOKEN_STR) {
+			loc := tokens[i + 1].loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path to be an string\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		wd, err := os.Getwd()
+		if err != nil {}
+
+		includepath := tokens[i + 1].scontent
+		pathtofile  := ""
+
+		switch {
+		case fileExists(wd + "/" + includepath):       pathtofile = wd + "/" + includepath
+		case fileExists(wd + "/std/" + includepath):   pathtofile = wd + "/std/" + includepath
+		case fileExists(wd + "/../" + includepath):     pathtofile = wd + "/../" + includepath
+		case fileExists(wd + "/../std/" + includepath): pathtofile = wd + "/../std/" + includepath
+		default:
+			pathtofile = includepath
+		}
+
+		includeops := compileFileIntoOps(pathtofile)
+		ops = append(ops, includeops...)
+		i += 1
+	case token.scontent == keywordAsString(KEYWORD_CONST):  // end include parsing
+		if !((len(tokens)-1) >= i + 1) { // begin const parsing
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name but got nothing\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i + 1].kind == TOKEN_WORD) {
+			loc := tokens[i + 1].loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name to be an word\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		constKeyLoc := tokens[i].loc
+		constName   := tokens[i + 1].scontent
+		constToks   := []Token{}
+		constClosed := false
+
+		checkNameRedefinition(constName, tokens[i+1].loc)
+
+		i += 2
+
+		for i < len(tokens) {
+			if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside constants is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if tokenWordAsOp(tokens[i]).op == OP_END {
+				constClosed = true
+				break
+			}
+
+			constToks = append(constToks, tokens[i])
+			i += 1
+		}
+
+		if !constClosed {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
+			os.Exit(1)
+		}
+
+		if len(constToks) == 0 {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing constant block\n",
+				constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
+			os.Exit(1)
+		}
+
+		constVal := evaluateAtCompileTime(constToks, constKeyLoc)
+		constants = append(constants, Const{name: constName, value: constVal})
+	case token.scontent == keywordAsString(KEYWORD_MEMORY): // end const parsing
+		if !((len(tokens)-1) >= i + 1) { // begin memory parsing
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name but got nothing\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i + 1].kind == TOKEN_WORD) {
+			loc := tokens[i + 1].loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name to be an word\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		memoryKeyLoc := tokens[i].loc
+		memoryName   := tokens[i + 1].scontent
+		memoryToks   := []Token{}
+		memoryClosed := false
+
+		checkNameRedefinition(memoryName, tokens[i+1].loc)
+
+		i += 2
+
+		for i < len(tokens) {
+			if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside memory blocks is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.r)
+				os.Exit(1)
+			}
+
+			if tokenWordAsOp(tokens[i]).op == OP_END {
+				memoryClosed = true
+				break
+			}
+
+			memoryToks = append(memoryToks, tokens[i])
+			i += 1
+		}
+
+		if !memoryClosed {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
+				memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
+			os.Exit(1)
+		}
+
+		if len(memoryToks) == 0 {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing memory block\n",
+				memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
+			os.Exit(1)
+		}
+
+		memoryVal := evaluateAtCompileTime(memoryToks, memoryKeyLoc)
+		memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
+		memcnt += 1
+	case token.scontent == keywordAsString(KEYWORD_HERE): // end memory parsing
+		// begin here parsing
+		loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
+		ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
+		// end here parsing
+	}
+	return i, ops
 }
 
 func handleWord(token Token) []Op {
@@ -968,264 +1232,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			ops = append(ops, handleWord(token)...)
 		case TOKEN_KEYWORD:
-			if !(KEYWORD_COUNT == 7) {
-				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
-				os.Exit(1)
-			}
-
-			switch {
-			case token.scontent == keywordAsString(KEYWORD_MACRO): // begin macro parsing
-				if !((len(tokens)-1) >= i + 1) {
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name but got nothing\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				if !(tokens[i + 1].kind == TOKEN_WORD) {
-					loc := tokens[i + 1].loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected macro name to be an word\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				macroKeyLoc := token.loc
-				macroName   := tokens[i + 1].scontent
-				macroToks   := []Token{}
-				macroClosed := false
-
-				checkNameRedefinition(macroName, tokens[i+1].loc)
-
-				i += 2
-
-				blockStack := []int{}
-				pop        := 0
-				if pop == 0 {}
-				for i < len(tokens) {
-					if tokenWordAsOp(tokens[i]).op == OP_END && len(blockStack) == 0 {
-						macroClosed = true
-						break
-					}
-
-					// @disallow inside macros
-					if tokens[i].scontent == keywordAsString(KEYWORD_MACRO) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-						os.Exit(1)
-					}
-
-					if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside macros is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-						os.Exit(1)
-					}
-
-					if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside macros is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-						os.Exit(1)
-					}
-
-
-					if !(OP_COUNT == 49) {
-						fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
-						os.Exit(1)
-					}
-
-					switch {
-					case tokenWordAsOp(tokens[i]).op == OP_IF ||
-						tokenWordAsOp(tokens[i]).op == OP_DO:
-						blockStack = append(blockStack, i)
-					case tokenWordAsOp(tokens[i]).op == OP_ELSE:
-						if !(len(blockStack) > 0) {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
-								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-							os.Exit(1)
-						}
-
-						blockStack, pop = popInt(blockStack)
-						if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
-								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-							os.Exit(1)
-						}
-
-						blockStack = append(blockStack, i)
-					case tokenWordAsOp(tokens[i]).op == OP_END:
-						if !(len(blockStack) > 0) {
-							fmt.Fprintf(os.Stderr, "%s:%s:%d: ERROR: `end` does not have any block to close\n",
-								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-							os.Exit(1)
-						}
-
-						blockStack, pop = popInt(blockStack)
-
-						if !((tokenWordAsOp(tokens[pop]).op == OP_IF)   ||
-							(tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
-							(tokenWordAsOp(tokens[pop]).op == OP_DO)) {
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n",
-								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-							os.Exit(1)
-						}
-					}
-
-					macroToks = append(macroToks, tokens[i])
-					i += 1
-				}
-
-				macros = append(macros, Macro{name: macroName, toks: macroToks})
-
-				if !macroClosed {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", macroKeyLoc.f, macroKeyLoc.r, macroKeyLoc.c)
-					os.Exit(1)
-				}
-			case token.scontent == keywordAsString(KEYWORD_INCLUDE): // end macro parsing
-				if !((len(tokens)-1) >= i + 1) { // begin include parsing
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path but got nothing\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				if !(tokens[i + 1].kind == TOKEN_STR) {
-					loc := tokens[i + 1].loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected include path to be an string\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				wd, err := os.Getwd()
-				if err != nil {}
-
-				includepath := tokens[i + 1].scontent
-				pathtofile  := ""
-
-				switch {
-				case fileExists(wd + "/" + includepath):       pathtofile = wd + "/" + includepath
-				case fileExists(wd + "/std/" + includepath):   pathtofile = wd + "/std/" + includepath
-				case fileExists(wd + "/../" + includepath):     pathtofile = wd + "/../" + includepath
-				case fileExists(wd + "/../std/" + includepath): pathtofile = wd + "/../std/" + includepath
-				default:
-					pathtofile = includepath
-				}
-
-				includeops := compileFileIntoOps(pathtofile)
-				ops = append(ops, includeops...)
-				i += 1
-			case token.scontent == keywordAsString(KEYWORD_CONST):  // end include parsing
-				if !((len(tokens)-1) >= i + 1) { // begin const parsing
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name but got nothing\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				if !(tokens[i + 1].kind == TOKEN_WORD) {
-					loc := tokens[i + 1].loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected const name to be an word\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				constKeyLoc := tokens[i].loc
-				constName   := tokens[i + 1].scontent
-				constToks   := []Token{}
-				constClosed := false
-
-				checkNameRedefinition(constName, tokens[i+1].loc)
-
-				i += 2
-
-				for i < len(tokens) {
-					if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside constants is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-						os.Exit(1)
-					}
-
-					if tokenWordAsOp(tokens[i]).op == OP_END {
-						constClosed = true
-						break
-					}
-
-					constToks = append(constToks, tokens[i])
-					i += 1
-				}
-
-				if !constClosed {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
-					os.Exit(1)
-				}
-
-				if len(constToks) == 0 {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing constant block\n",
-						constKeyLoc.f, constKeyLoc.r, constKeyLoc.c)
-					os.Exit(1)
-				}
-
-				constVal := evaluateAtCompileTime(constToks, constKeyLoc)
-				constants = append(constants, Const{name: constName, value: constVal})
-			case token.scontent == keywordAsString(KEYWORD_MEMORY): // end const parsing
-				if !((len(tokens)-1) >= i + 1) { // begin memory parsing
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name but got nothing\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				if !(tokens[i + 1].kind == TOKEN_WORD) {
-					loc := tokens[i + 1].loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected memory name to be an word\n",
-						loc.f, loc.r, loc.c)
-					os.Exit(1)
-				}
-
-				memoryKeyLoc := tokens[i].loc
-				memoryName   := tokens[i + 1].scontent
-				memoryToks   := []Token{}
-				memoryClosed := false
-
-				checkNameRedefinition(memoryName, tokens[i+1].loc)
-
-				i += 2
-
-				for i < len(tokens) {
-					if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside memory blocks is not allowed\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.r)
-						os.Exit(1)
-					}
-
-					if tokenWordAsOp(tokens[i]).op == OP_END {
-						memoryClosed = true
-						break
-					}
-
-					memoryToks = append(memoryToks, tokens[i])
-					i += 1
-				}
-
-				if !memoryClosed {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
-						memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
-					os.Exit(1)
-				}
-
-				if len(memoryToks) == 0 {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected expression before closing memory block\n",
-						memoryKeyLoc.f, memoryKeyLoc.r, memoryKeyLoc.c)
-					os.Exit(1)
-				}
-
-				memoryVal := evaluateAtCompileTime(memoryToks, memoryKeyLoc)
-				memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
-				memcnt += 1
-			case token.scontent == keywordAsString(KEYWORD_HERE): // end memory parsing
-				// begin here parsing
-				loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
-				ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
-				// end here parsing
-			}
+			i, ops = handleKeyword(i, tokens, ops)
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (compileTokensIntoOps)\n")
 			os.Exit(1)

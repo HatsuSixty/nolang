@@ -1,3 +1,5 @@
+include "std.no"
+
 macro main
   here puts "\n" puts
 end
