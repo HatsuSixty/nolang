@@ -835,16 +835,63 @@ func expandMacro(macro Macro) []Op {
 		case TOKEN_STR:
 			opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
 		case TOKEN_WORD:
-			optoadd := tokenWordAsOp(macro.toks[m])
-			if optoadd.op == OP_ERR {
-				fmt.Fprintf(os.Stderr, "TODO: not implemented yet\n")
-				os.Exit(1)
-			}
-			opers = append(opers, optoadd)
+			opers = append(opers, handleWord(macro.toks[m])...)
 		case TOKEN_KEYWORD:
 			fmt.Fprintf(os.Stderr, "TODO: not implemented yet (keywords)\n")
 			os.Exit(1)
 		}
+	}
+	return opers
+}
+
+func handleWord(token Token) []Op {
+	opers := []Op{}
+	optoadd := tokenWordAsOp(token)
+	if optoadd.op == OP_ERR {
+		err   := true
+
+		for m := range macros {
+			curmac := macros[m]
+
+			if curmac.name == token.scontent {
+				opers = append(opers, expandMacro(curmac)...)
+				err = false
+				break
+			}
+		}
+
+		if err {
+			for co := range constants {
+				curcon := constants[co]
+
+				if curcon.name == token.scontent {
+					opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: token.loc})
+					err = false
+					break
+				}
+			}
+		}
+
+		if err {
+			for mem := range memorys {
+				curmem := memorys[mem]
+
+				if curmem.name == token.scontent {
+					opers = append(opers, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
+					err = false
+					break
+				}
+			}
+		}
+
+		if err {
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
+				token.scontent)
+			os.Exit(1)
+		}
+	} else {
+		opers = append(opers, optoadd)
 	}
 	return opers
 }
@@ -919,53 +966,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_STR:
 			ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(token.scontent), loc: token.loc})
 		case TOKEN_WORD:
-			optoadd := tokenWordAsOp(token)
-			if optoadd.op == OP_ERR {
-				err := true
-
-				for m := range macros {
-					curmac := macros[m]
-
-					if curmac.name == token.scontent {
-						ops = append(ops, expandMacro(curmac)...)
-						err = false
-						break
-					}
-				}
-
-				if err {
-					for co := range constants {
-						curcon := constants[co]
-
-						if curcon.name == token.scontent {
-							ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(curcon.value), loc: token.loc})
-							err = false
-							break
-						}
-					}
-				}
-
-				if err {
-					for mem := range memorys {
-						curmem := memorys[mem]
-
-						if curmem.name == token.scontent {
-							ops = append(ops, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
-							err = false
-							break
-						}
-					}
-				}
-
-				if err {
-					loc := token.loc
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
-						token.scontent)
-					os.Exit(1)
-				}
-			} else {
-				ops = append(ops, optoadd)
-			}
+			ops = append(ops, handleWord(token)...)
 		case TOKEN_KEYWORD:
 			if !(KEYWORD_COUNT == 7) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")

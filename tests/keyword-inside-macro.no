@@ -1,0 +1,5 @@
+macro main
+  here puts "\n" puts
+end
+
+main
