@@ -821,8 +821,8 @@ func tokenWordAsOp(token Token) Op {
 	}
 }
 
-func wordExists(str string) {
-	if (tokenWordAsOp(str).op == OP_ERR) && (stringAsKeyword(str) == Keyword(404)) {
+func wordExists(str string) bool {
+	if (tokenWordAsOp(Token{scontent: str}).op == OP_ERR) && (stringAsKeyword(str) == Keyword(404)) {
 		return false
 	}
 	return true
