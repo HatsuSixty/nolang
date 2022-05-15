@@ -821,6 +821,13 @@ func tokenWordAsOp(token Token) Op {
 	}
 }
 
+func wordExists(str string) {
+	if (tokenWordAsOp(str).op == OP_ERR) && (stringAsKeyword(str) == Keyword(404)) {
+		return false
+	}
+	return true
+}
+
 func expandMacro(macro Macro) []Op {
 	opers := []Op{}
 	if !(TOKEN_COUNT == 4) {
@@ -1161,7 +1168,7 @@ func handleWord(token Token) []Op {
 }
 
 func checkNameRedefinition(name string, loc Location) {
-	if in(name, builtinWordsNames) {
+	if wordExists(name) {
 		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing word: %s\n",
 			loc.f, loc.r, loc.c, name)
 		os.Exit(1)
@@ -1210,7 +1217,7 @@ type Memory struct {
 	alloc int
 }
 var memorys []Memory
-var memcnt int = 0
+var memcnt  int = 0
 
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
@@ -1246,72 +1253,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 ////////// COMPILER //////////
 
-var builtinWordsNames []string = []string{
-	"+",
-	"-",
-	"*",
-	"divmod",
-	"print",
-	"syscall0",
-	"syscall1",
-	"syscall2",
-	"syscall3",
-	"syscall4",
-	"syscall5",
-	"syscall6",
-	"@8",
-	"!8",
-	"@16",
-	"!16",
-	"@32",
-	"!32",
-	"@64",
-	"!64",
-	"dup",
-	"drop",
-	"swap",
-	"over",
-	"rot",
-	"2dup",
-	"2swap",
-	"=",
-	">",
-	"<",
-	">=",
-	"<=",
-	"!=",
-	"if",
-	"else",
-	"end",
-	"while",
-	"do",
-	"shl",
-	"shr",
-	"or",
-	"and",
-	"not",
-	"macro",
-	"include",
-	"const",
-	"increment",
-	"reset",
-	"memory",
-	"argv",
-	"argc",
-	"here",
-}
-
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 49) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
-		os.Exit(1)
-	}
-	if !(KEYWORD_COUNT == 7) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in builtInWordsNames\n")
-		os.Exit(1)
-	}
-
-
 	tokens := lexfile(filepath)
 	ops    := compileTokensIntoOps(tokens)
 	return ops
