@@ -1,0 +1,45 @@
+include "std.no"
+
+const User.name sizeof(ptr) increment end
+const User.age  sizeof(u64) increment end
+const sizeof(User)              reset end
+
+memory user           sizeof(User) end
+memory users     sizeof(ptr) 100 * end
+memory users_sz        sizeof(u64) end
+
+"Jeff\n" tmp-str-to-cstr user User.name + !64
+69                       user User.age  + !64
+
+               //usr  arr
+               // \/   \/
+macro user-add // ptr ptr
+  sizeof(ptr) users_sz @64 * + !64
+  users_sz inc64
+end
+
+macro user-pop // ptr -- ptr
+  sizeof(ptr) users_sz @64 1 - * + @64
+  users_sz dec64
+end
+
+macro user-dump
+  0 while dup users_sz @64 < do
+    users over sizeof(ptr) * + @64
+    User.name + @64 cstr-to-str puts
+    users over sizeof(ptr) * + @64
+    User.age  + @64             print
+    1 +
+  end drop
+end
+
+user users user-add
+user users user-add
+user users user-add
+user users user-add
+user users user-add
+
+users user-pop dup User.name + @64 cstr-to-str puts
+                   User.age  + @64             print
+
+user-dump
