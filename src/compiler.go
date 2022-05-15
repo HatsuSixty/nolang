@@ -888,9 +888,10 @@ func expandMacro(macro Macro) []Op {
 						os.Exit(1)
 						err = false
 					case keywordAsString(KEYWORD_IN):
-						fmt.Fprintf(os.Stderr, "TODO: not implemented yet\n")
+						loc := macro.toks[m].loc
+						fmt.Println(os.Stderr, "%s:%d:%d: ERROR: `in` does not have any block to close\n",
+							loc.f, loc.r, loc.c)
 						os.Exit(1)
-						err = false
 					}
 				}
 
@@ -958,6 +959,14 @@ type Memory struct {
 	alloc int
 }
 var memorys []Memory
+
+type Bind struct {
+	name  string
+	index int
+}
+var bindcnt int = 0
+var bindings []Bind
+
 var memcnt int = 0
 
 func compileTokensIntoOps(tokens []Token) []Op {
@@ -1237,9 +1246,41 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
 					ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
 				case token.scontent == keywordAsString(KEYWORD_LET):  // end here parsing
-					// begin let parsing
-					fmt.Fprintf(os.Stderr, "TODO: parsing let bindings is not implemented yet\n")
-					os.Exit(1)
+					if !(len(tokens) > i+1) { // begin let parsing
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected name of items to bind but got nothing\n",
+							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+						os.Exit(1)
+					}
+
+					error := true
+
+					letKeyLoc := tokens[i].loc
+					i += 1
+					for i < len(tokens) {
+						if tokens[i].scontent == keywordAsString(KEYWORD_IN) {
+							error = false
+							break
+						}
+
+						switch {
+						case tokens[i].kind == TOKEN_WORD:
+							checkNameRedefinition(tokens[i].scontent, tokens[i].loc)
+							bindings = append(bindings, Bind{name: tokens[i].scontent, index: bindcnt})
+							bindcnt += 1
+						default:
+							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unsupported token kind in let blocks\n",
+								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+							os.Exit(1)
+						}
+						i += 1
+					}
+					if error {
+						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
+							letKeyLoc.f, letKeyLoc.r, letKeyLoc.c)
+						os.Exit(1)
+					}
+
+					ops = append(ops, Op{op: OP_BIND, operand: Operand(len(bindings))})
 				default: // end let parsing
 					err := true
 
@@ -1271,6 +1312,16 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 							if curmem.name == token.scontent {
 								ops = append(ops, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
+								err = false
+								break
+							}
+						}
+					}
+
+					if err {
+						for _, let := range bindings {
+							if let.name == token.scontent {
+								ops = append(ops, Op{op: OP_PUSH_BIND, operand: Operand(let.index)})
 								err = false
 								break
 							}
