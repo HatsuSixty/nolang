@@ -20,8 +20,6 @@ const (
 	KEYWORD_RESET     Keyword = iota
 	KEYWORD_MEMORY    Keyword = iota
 	KEYWORD_HERE      Keyword = iota
-	KEYWORD_LET       Keyword = iota
-	KEYWORD_IN        Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -29,78 +27,73 @@ const (
 type OpType int
 const (
 	// basic operators
-	OP_PLUS      OpType = iota
-	OP_MINUS     OpType = iota
-	OP_MULT      OpType = iota
-	OP_DIVMOD    OpType = iota
-	OP_PRINT     OpType = iota
-	OP_PUSH_INT  OpType = iota
-	OP_PUSH_STR  OpType = iota
-	OP_PUSH_MEM  OpType = iota
+	OP_PLUS     OpType = iota
+	OP_MINUS    OpType = iota
+	OP_MULT     OpType = iota
+	OP_DIVMOD   OpType = iota
+	OP_PRINT    OpType = iota
+	OP_PUSH_INT OpType = iota
+	OP_PUSH_STR OpType = iota
+	OP_PUSH_MEM OpType = iota
 
 	// syscalls
-	OP_SYSCALL0  OpType = iota
-	OP_SYSCALL1  OpType = iota
-	OP_SYSCALL2  OpType = iota
-	OP_SYSCALL3  OpType = iota
-	OP_SYSCALL4  OpType = iota
-	OP_SYSCALL5  OpType = iota
-	OP_SYSCALL6  OpType = iota
+	OP_SYSCALL0 OpType = iota
+	OP_SYSCALL1 OpType = iota
+	OP_SYSCALL2 OpType = iota
+	OP_SYSCALL3 OpType = iota
+	OP_SYSCALL4 OpType = iota
+	OP_SYSCALL5 OpType = iota
+	OP_SYSCALL6 OpType = iota
 
 	// memory
-	OP_LOAD8     OpType = iota
-	OP_STORE8    OpType = iota
-	OP_LOAD16    OpType = iota
-	OP_STORE16   OpType = iota
-	OP_LOAD32    OpType = iota
-	OP_STORE32   OpType = iota
-	OP_LOAD64    OpType = iota
-	OP_STORE64   OpType = iota
+	OP_LOAD8    OpType = iota
+	OP_STORE8   OpType = iota
+	OP_LOAD16   OpType = iota
+	OP_STORE16  OpType = iota
+	OP_LOAD32   OpType = iota
+	OP_STORE32  OpType = iota
+	OP_LOAD64   OpType = iota
+	OP_STORE64  OpType = iota
 
 	// stack
-	OP_DUP       OpType = iota
-	OP_DROP      OpType = iota
-	OP_SWAP      OpType = iota
-	OP_OVER      OpType = iota
-	OP_ROT       OpType = iota
-	OP_2DUP      OpType = iota
-	OP_2SWAP     OpType = iota
+	OP_DUP      OpType = iota
+	OP_DROP     OpType = iota
+	OP_SWAP     OpType = iota
+	OP_OVER     OpType = iota
+	OP_ROT      OpType = iota
+	OP_2DUP     OpType = iota
+	OP_2SWAP    OpType = iota
 
 	// logic (booleans)
-	OP_EQ        OpType = iota
-	OP_GT        OpType = iota
-	OP_LT        OpType = iota
-	OP_GE        OpType = iota
-	OP_LE        OpType = iota
-	OP_NE        OpType = iota
+	OP_EQ       OpType = iota
+	OP_GT       OpType = iota
+	OP_LT       OpType = iota
+	OP_GE       OpType = iota
+	OP_LE       OpType = iota
+	OP_NE       OpType = iota
 
 	// logic (conditions and loops)
-	OP_IF        OpType = iota
-	OP_ELSE      OpType = iota
-	OP_END       OpType = iota
-	OP_WHILE     OpType = iota
-	OP_DO        OpType = iota
+	OP_IF       OpType = iota
+	OP_ELSE     OpType = iota
+	OP_END      OpType = iota
+	OP_WHILE    OpType = iota
+	OP_DO       OpType = iota
 
 	// bitwise
-	OP_SHL       OpType = iota
-	OP_SHR       OpType = iota
-	OP_OR        OpType = iota
-	OP_AND       OpType = iota
-	OP_NOT       OpType = iota
+	OP_SHL      OpType = iota
+	OP_SHR      OpType = iota
+	OP_OR       OpType = iota
+	OP_AND      OpType = iota
+	OP_NOT      OpType = iota
 
 	// cmd line args
-	OP_ARGV      OpType = iota
-	OP_ARGC      OpType = iota
-
-	// bindings
-	OP_BIND      OpType = iota
-	OP_PUSH_BIND OpType = iota
-	OP_UNBIND    OpType = iota
+	OP_ARGV     OpType = iota
+	OP_ARGC     OpType = iota
 
 	// others
-	OP_ERR       OpType = iota
+	OP_ERR      OpType = iota
 
-	OP_COUNT     OpType = iota
+	OP_COUNT    OpType = iota
 )
 
 type Operand int
@@ -118,7 +111,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 52) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -479,15 +472,6 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    mov rax, [args_ptr]\n")
 			f.WriteString("    mov rax, [rax]\n"     )
 			f.WriteString("    push rax\n"           )
-		case OP_BIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_BIND is not implemented yet\n")
-			os.Exit(1)
-		case OP_PUSH_BIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_PUSH_BIND is not implemented yet\n")
-			os.Exit(1)
-		case OP_UNBIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_UNBIND is not implemented yet\n")
-			os.Exit(1)
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -530,7 +514,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 52) {
+		if !(OP_COUNT == 49) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -696,7 +680,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 9) {
+	if !(KEYWORD_COUNT == 7) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -710,15 +694,13 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_MACRO:     return "macro"
 	case KEYWORD_MEMORY:    return "memory"
 	case KEYWORD_HERE:      return "here"
-	case KEYWORD_LET:       return "let"
-	case KEYWORD_IN:        return "in"
 
 	}
 	return "unreachable"
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 52) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -839,7 +821,7 @@ func expandMacro(macro Macro) []Op {
 					operstr: OperStr(macro.toks[m].scontent),
 					loc: macro.toks[m].loc})
 			default:
-				if !(KEYWORD_COUNT == 9) {
+				if !(KEYWORD_COUNT == 7) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords while expandig macros\n")
 					os.Exit(1)
 				}
@@ -877,28 +859,16 @@ func expandMacro(macro Macro) []Op {
 					}
 				}
 
-				if err { // handle keywords
-					switch macro.toks[m].scontent {
-					case keywordAsString(KEYWORD_HERE):
-						loct := macro.toks[m].loc.f + ":" + strconv.Itoa(macro.toks[m].loc.r) + ":" + strconv.Itoa(macro.toks[m].loc.c)
-						opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
-						err = false
-					case keywordAsString(KEYWORD_LET):
-						fmt.Fprintf(os.Stderr, "TODO: not implemented yet\n")
-						os.Exit(1)
-						err = false
-					case keywordAsString(KEYWORD_IN):
-						loc := macro.toks[m].loc
-						fmt.Println(os.Stderr, "%s:%d:%d: ERROR: `in` does not have any block to close\n",
-							loc.f, loc.r, loc.c)
-						os.Exit(1)
-					}
+				if err { // push loc as str
+					loct := macro.toks[m].loc.f + ":" + strconv.Itoa(macro.toks[m].loc.r) + ":" + strconv.Itoa(macro.toks[m].loc.c)
+					opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
+					err = false
 				}
 
 				if err {
 					loc := macro.toks[m].loc
 					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unknown word: %s\n", loc.f, loc.r, loc.c,
-						macro.toks[m].scontent)
+							macro.toks[m].scontent)
 					os.Exit(2)
 				}
 			}
@@ -959,14 +929,6 @@ type Memory struct {
 	alloc int
 }
 var memorys []Memory
-
-type Bind struct {
-	name  string
-	index int
-}
-var bindcnt int = 0
-var bindings []Bind
-
 var memcnt int = 0
 
 func compileTokensIntoOps(tokens []Token) []Op {
@@ -989,7 +951,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			optoadd := tokenWordAsOp(token)
 			if optoadd.op == OP_ERR {
-				if !(KEYWORD_COUNT == 9) {
+				if !(KEYWORD_COUNT == 7) {
 					fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 					os.Exit(1)
 				}
@@ -1048,14 +1010,14 @@ func compileTokensIntoOps(tokens []Token) []Op {
 						}
 
 
-						if !(OP_COUNT == 52) {
+						if !(OP_COUNT == 49) {
 							fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 							os.Exit(1)
 						}
 
 						switch {
 						case tokenWordAsOp(tokens[i]).op == OP_IF ||
-							tokenWordAsOp(tokens[i]).op == OP_DO:
+							 tokenWordAsOp(tokens[i]).op == OP_DO:
 							blockStack = append(blockStack, i)
 						case tokenWordAsOp(tokens[i]).op == OP_ELSE:
 							if !(len(blockStack) > 0) {
@@ -1082,8 +1044,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 							blockStack, pop = popInt(blockStack)
 
 							if !((tokenWordAsOp(tokens[pop]).op == OP_IF)   ||
-								(tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
-								(tokenWordAsOp(tokens[pop]).op == OP_DO)) {
+								 (tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
+								 (tokenWordAsOp(tokens[pop]).op == OP_DO)) {
 								fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n",
 									tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 								os.Exit(1)
@@ -1122,8 +1084,8 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					pathtofile  := ""
 
 					switch {
-					case fileExists(wd + "/" + includepath):        pathtofile = wd + "/" + includepath
-					case fileExists(wd + "/std/" + includepath):    pathtofile = wd + "/std/" + includepath
+					case fileExists(wd + "/" + includepath):       pathtofile = wd + "/" + includepath
+					case fileExists(wd + "/std/" + includepath):   pathtofile = wd + "/std/" + includepath
 					case fileExists(wd + "/../" + includepath):     pathtofile = wd + "/../" + includepath
 					case fileExists(wd + "/../std/" + includepath): pathtofile = wd + "/../std/" + includepath
 					default:
@@ -1245,43 +1207,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 					// begin here parsing
 					loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
 					ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
-				case token.scontent == keywordAsString(KEYWORD_LET):  // end here parsing
-					if !(len(tokens) > i+1) { // begin let parsing
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected name of items to bind but got nothing\n",
-							tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-						os.Exit(1)
-					}
-
-					error := true
-
-					letKeyLoc := tokens[i].loc
-					i += 1
-					for i < len(tokens) {
-						if tokens[i].scontent == keywordAsString(KEYWORD_IN) {
-							error = false
-							break
-						}
-
-						switch {
-						case tokens[i].kind == TOKEN_WORD:
-							checkNameRedefinition(tokens[i].scontent, tokens[i].loc)
-							bindings = append(bindings, Bind{name: tokens[i].scontent, index: bindcnt})
-							bindcnt += 1
-						default:
-							fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unsupported token kind in let blocks\n",
-								tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-							os.Exit(1)
-						}
-						i += 1
-					}
-					if error {
-						fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
-							letKeyLoc.f, letKeyLoc.r, letKeyLoc.c)
-						os.Exit(1)
-					}
-
-					ops = append(ops, Op{op: OP_BIND, operand: Operand(len(bindings))})
-				default: // end let parsing
+				default: // end here parsing
 					err := true
 
 					for m := range macros {
@@ -1312,16 +1238,6 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 							if curmem.name == token.scontent {
 								ops = append(ops, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
-								err = false
-								break
-							}
-						}
-					}
-
-					if err {
-						for _, let := range bindings {
-							if let.name == token.scontent {
-								ops = append(ops, Op{op: OP_PUSH_BIND, operand: Operand(let.index)})
 								err = false
 								break
 							}
@@ -1404,16 +1320,14 @@ var builtinWordsNames []string = []string{
 	"argv",
 	"argc",
 	"here",
-	"let",
-	"in",
 }
 
 func compileFileIntoOps(filepath string) []Op {
-	if !(OP_COUNT == 52) {
+	if !(OP_COUNT == 49) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in builtInWordsNames\n")
 		os.Exit(1)
 	}
-	if !(KEYWORD_COUNT == 9) {
+	if !(KEYWORD_COUNT == 7) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in builtInWordsNames\n")
 		os.Exit(1)
 	}
