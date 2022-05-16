@@ -181,6 +181,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    ;; -- push cstr --\n" )
 			id := strcnt
 			strings = append(strings, Ctring{str: string(program[i].operstr), id: id})
+			strcnt += 1
 			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
 		case OP_PUSH_MEM:
 			f.WriteString("    ;; -- push mem --\n"  )
