@@ -20,6 +20,8 @@ const (
 	KEYWORD_RESET     Keyword = iota
 	KEYWORD_MEMORY    Keyword = iota
 	KEYWORD_HERE      Keyword = iota
+	KEYWORD_LET       Keyword = iota
+	KEYWORD_IN        Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -583,6 +585,10 @@ func crossreferenceBlocks(program []Op) []Op {
 			case mprogram[blockIp].op == OP_BIND:
 				mprogram[i].op = OP_UNBIND
 				mprogram[i].operand = mprogram[blockIp].operand
+				var iii Operand
+				for iii = 0; iii < mprogram[blockIp].operand; iii += 1 {
+					bindings = bindings[:len(bindings)-1]
+				}
 			default:
 				loc := mprogram[i].loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n", loc.f, loc.r, loc.c)
@@ -706,7 +712,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 7) {
+	if !(KEYWORD_COUNT == 9) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -720,13 +726,15 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_MACRO:     return "macro"
 	case KEYWORD_MEMORY:    return "memory"
 	case KEYWORD_HERE:      return "here"
+	case KEYWORD_LET:       return "let"
+	case KEYWORD_IN:        return "in"
 
 	}
 	return "unreachable"
 }
 
 func stringAsKeyword(str string) Keyword {
-	if !(KEYWORD_COUNT == 7) {
+	if !(KEYWORD_COUNT == 9) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in stringAsKeyword\n")
 		os.Exit(1)
 	}
@@ -740,6 +748,8 @@ func stringAsKeyword(str string) Keyword {
 	case "macro":     return KEYWORD_MACRO
 	case "memory":    return KEYWORD_MEMORY
 	case "here":      return KEYWORD_HERE
+	case "let":       return KEYWORD_LET
+	case "in":        return KEYWORD_IN
 	default:          return Keyword(404)
 
 	}
@@ -882,7 +892,7 @@ func expandMacro(macro Macro) []Op {
 
 func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 	token := tokens[i]
-	if !(KEYWORD_COUNT == 7) {
+	if !(KEYWORD_COUNT == 9) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 		os.Exit(1)
 	}
@@ -1139,6 +1149,47 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		loct := token.loc.f + ":" + strconv.Itoa(token.loc.r) + ":" + strconv.Itoa(token.loc.c)
 		ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
 		// end here parsing
+	case token.scontent == keywordAsString(KEYWORD_LET): // begin let parsing
+		if !((len(tokens)-1) >= i + 1) {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected the names of items to bind but got nothing\n",
+				token.loc.f, token.loc.r, token.loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i+1].kind == TOKEN_WORD) {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected the names of items to bind to be an word\n",
+				token.loc.f, token.loc.r, token.loc.c)
+			os.Exit(1)
+		}
+
+		id  := 0
+		err := true
+		i += 1
+		for i < len(tokens) {
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_IN {
+				err = false
+				break
+			}
+
+			checkNameRedefinition(tokens[i].scontent, tokens[i].loc)
+			if !(tokens[i].kind == TOKEN_WORD) {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected the names of items to bind to be an word\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			bindings = append(bindings, Bind{name: tokens[i].scontent, index: id})
+			id += 1
+			i  += 1
+		}
+
+		if err {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
+				token.loc.f, token.loc.r, token.loc.c)
+			os.Exit(1)
+		}
+
+		ops = append(ops, Op{op: OP_BIND, operand: Operand(len(bindings)), loc: token.loc})
 	}
 	return i, ops
 }
@@ -1177,6 +1228,16 @@ func handleWord(token Token) []Op {
 
 				if curmem.name == token.scontent {
 					opers = append(opers, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
+					err = false
+					break
+				}
+			}
+		}
+
+		if err {
+			for _, bind := range bindings {
+				if bind.name == token.scontent {
+					opers = append(opers, Op{op: OP_PUSH_BIND, operand: Operand(bind.index), loc: token.loc})
 					err = false
 					break
 				}
@@ -1246,6 +1307,12 @@ type Memory struct {
 }
 var memorys []Memory
 var memcnt  int = 0
+
+type Bind struct {
+	name  string
+	index int
+}
+var bindings []Bind
 
 func compileTokensIntoOps(tokens []Token) []Op {
 	var ops []Op
