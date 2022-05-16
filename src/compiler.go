@@ -91,6 +91,11 @@ const (
 	OP_ARGV     OpType = iota
 	OP_ARGC     OpType = iota
 
+	// bindings
+	OP_BIND     OpType = iota
+	OP_UNBIND   OpType = iota
+	OP_PUSH_BIND OpType = iota
+
 	// others
 	OP_ERR      OpType = iota
 
@@ -112,7 +117,7 @@ type Ctring struct {
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 50) {
+	if !(OP_COUNT == 53) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
 		os.Exit(1)
 	}
@@ -479,6 +484,15 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    mov rax, [args_ptr]\n")
 			f.WriteString("    mov rax, [rax]\n"     )
 			f.WriteString("    push rax\n"           )
+		case OP_BIND:
+			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_BIND is not implemented yet\n")
+			os.Exit(1)
+		case OP_UNBIND:
+			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_UNBIND is not implemented yet\n")
+			os.Exit(1)
+		case OP_PUSH_BIND:
+			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_PUSH_BIND is not implemented yet\n")
+			os.Exit(1)
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -521,7 +535,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 50) {
+		if !(OP_COUNT == 53) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -547,6 +561,8 @@ func crossreferenceBlocks(program []Op) []Op {
 
 			mprogram[ifIp].operand = Operand(i + 1)
 			stack = append(stack, i)
+		case OP_BIND:
+			stack = append(stack, i)
 		case OP_END:
 			if !(len(stack) > 0) {
 				loc := mprogram[i].loc
@@ -564,6 +580,9 @@ func crossreferenceBlocks(program []Op) []Op {
 			case mprogram[blockIp].op == OP_DO:
 				mprogram[i].operand       = mprogram[blockIp].operand
 				mprogram[blockIp].operand = Operand(i + 1)
+			case mprogram[blockIp].op == OP_BIND:
+				mprogram[i].op = OP_UNBIND
+				mprogram[i].operand = mprogram[blockIp].operand
 			default:
 				loc := mprogram[i].loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n", loc.f, loc.r, loc.c)
@@ -727,7 +746,7 @@ func stringAsKeyword(str string) Keyword {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 50) {
+	if !(OP_COUNT == 53) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -922,7 +941,7 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 			}
 
 
-			if !(OP_COUNT == 50) {
+			if !(OP_COUNT == 53) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 				os.Exit(1)
 			}
