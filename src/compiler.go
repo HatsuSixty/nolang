@@ -8,7 +8,8 @@ import (
 )
 
 // should be enough for everyone
-const MEM_CAP int = 640000
+const MEM_CAP              int = 640000
+const X86_64_RET_STACK_CAP int = 64 * 1024
 
 // keywords
 type Keyword int
@@ -170,6 +171,8 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("global _start\n"                        )
 	f.WriteString("_start:\n"                              )
 	f.WriteString("    mov [args_ptr], rsp\n"              )
+	f.WriteString("    mov rax, ret_stack_end\n"           )
+	f.WriteString("    mov [ret_stack_rsp], rax\n"         )
 	for i := range program {
 		f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
 		switch program[i].op {
@@ -487,14 +490,26 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 			f.WriteString("    mov rax, [rax]\n"     )
 			f.WriteString("    push rax\n"           )
 		case OP_BIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_BIND is not implemented yet\n")
-			os.Exit(1)
+			f.WriteString("    ;; -- bind --\n"      )
+			f.WriteString("    mov rax, [ret_stack_rsp]\n")
+			f.WriteString("    sub rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
+			f.WriteString("    mov [ret_stack_rsp], rax\n")
+			progop := int(program[i].operand)
+			for progop > 0 {
+				f.WriteString("    pop rbx\n")
+				f.WriteString("    mov [rax+" + strconv.Itoa((int(progop) - 1) * 8) + "], rbx\n")
+				progop -= 1
+			}
 		case OP_UNBIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_UNBIND is not implemented yet\n")
-			os.Exit(1)
+			f.WriteString("    ;; -- unbind --\n"         )
+			f.WriteString("    mov rax, [ret_stack_rsp]\n")
+			f.WriteString("    add rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
+			f.WriteString("    mov [ret_stack_rsp], rax\n")
 		case OP_PUSH_BIND:
-			fmt.Fprintf(os.Stderr, "TODO: the compilation of OP_PUSH_BIND is not implemented yet\n")
-			os.Exit(1)
+			f.WriteString("    ;; -- push bind --\n"      )
+			f.WriteString("    mov rax, [ret_stack_rsp]\n")
+			f.WriteString("    add rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
+			f.WriteString("    push QWORD [rax]\n"        )
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
 			os.Exit(2)
@@ -510,6 +525,9 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
 	}
 	f.WriteString("args_ptr: resb 8\n"           )
+	f.WriteString("ret_stack_rsp: resb 8\n"      )
+	f.WriteString("ret_stack: resb " + strconv.Itoa(X86_64_RET_STACK_CAP) + "\n")
+	f.WriteString("ret_stack_end:\n"             )
 	f.WriteString("segment .data\n"              )
 	for s := range strings {
 		curs := strings[s]
@@ -1235,7 +1253,8 @@ func handleWord(token Token) []Op {
 		}
 
 		if err {
-			for _, bind := range bindings {
+			for bd := len(bindings)-1; bd >= 0; bd--  {
+				bind := bindings[bd]
 				if bind.name == token.scontent {
 					opers = append(opers, Op{op: OP_PUSH_BIND, operand: Operand(bind.index), loc: token.loc})
 					err = false
