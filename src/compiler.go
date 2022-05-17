@@ -23,6 +23,8 @@ const (
 	KEYWORD_HERE      Keyword = iota
 	KEYWORD_LET       Keyword = iota
 	KEYWORD_IN        Keyword = iota
+	KEYWORD_FUNC      Keyword = iota
+	KEYWORD_DONE      Keyword = iota
 	KEYWORD_COUNT     Keyword = iota
 )
 
@@ -160,14 +162,14 @@ func generatePrintIntelLinux_x86_64(f *os.File) {
 	f.WriteString("    ret\n"                              )
 }
 
-func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File) {
+func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File, addrp string) {
 	op := program[i]
 	if !(OP_COUNT == 54) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateOpIntelLinux_x86_64\n")
 		os.Exit(1)
 	}
 
-	f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
+	f.WriteString(addrp + strconv.Itoa(i) + ":\n")
 	switch op.op {
 	case OP_PUSH_INT:
 		f.WriteString("    ;; -- push --\n"      )
@@ -377,17 +379,17 @@ func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File) {
 		f.WriteString("    ;; -- if --\n"        )
 		f.WriteString("    pop rax\n"            )
 		f.WriteString("    test rax, rax\n"      )
-		f.WriteString("    jz addr_" + strconv.Itoa(int(op.operand)) + "\n")
+		f.WriteString("    jz " + addrp + strconv.Itoa(int(op.operand)) + "\n")
 	case OP_ELSE:
 		f.WriteString("    ;; -- else --\n"      )
-		f.WriteString("    jmp addr_" + strconv.Itoa(int(op.operand)) + "\n")
+		f.WriteString("    jmp " + addrp + strconv.Itoa(int(op.operand)) + "\n")
 	case OP_END:
 		f.WriteString("    ;; -- end --\n"       )
 		if (i + 1) != int(op.operand) {
-			f.WriteString("    jmp addr_" + strconv.Itoa(int(op.operand)) + "\n")
+			f.WriteString("    jmp " + addrp + strconv.Itoa(int(op.operand)) + "\n")
 		}
 		if len(program) <= (i + 1) {
-			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
+			f.WriteString(addrp + strconv.Itoa(i + 1) + ":\n")
 		}
 	case OP_WHILE:
 		f.WriteString("    ;; -- while --\n"     )
@@ -395,7 +397,7 @@ func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File) {
 		f.WriteString("    ;; -- do --\n"        )
 		f.WriteString("    pop rax\n"            )
 		f.WriteString("    test rax, rax\n"      )
-		f.WriteString("    jz addr_" + strconv.Itoa(int(op.operand)) + "\n")
+		f.WriteString("    jz " + addrp + strconv.Itoa(int(op.operand)) + "\n")
 	case OP_DUP:
 		f.WriteString("    ;; -- dup --\n"       )
 		f.WriteString("    pop rax\n"            )
@@ -519,13 +521,20 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	}
 	f.WriteString("BITS 64\n")
 	generatePrintIntelLinux_x86_64(f)
+	for _, fn := range funcs {
+		f.WriteString("proc_" + strconv.Itoa(fn.id) + ":\n")
+		for o := range fn.ops {
+			generateOpIntelLinux_x86_64(o, fn.ops, f, "p" + strconv.Itoa(fn.id) + "addr_")
+		}
+		f.WriteString("    ret\n")
+	}
 	f.WriteString("global _start\n"                        )
 	f.WriteString("_start:\n"                              )
 	f.WriteString("    mov [args_ptr], rsp\n"              )
 	f.WriteString("    mov rax, ret_stack_end\n"           )
 	f.WriteString("    mov [ret_stack_rsp], rax\n"         )
 	for i := range program {
-		generateOpIntelLinux_x86_64(i, program, f)
+		generateOpIntelLinux_x86_64(i, program, f, "addr_")
 	}
 	f.WriteString("    ;; -- built-in exit --\n" )
 	f.WriteString("    mov rax, 60\n"            )
@@ -738,7 +747,7 @@ func evaluateAtCompileTime(toks []Token, loc Location) int {
 }
 
 func keywordAsString(key Keyword) string {
-	if !(KEYWORD_COUNT == 9) {
+	if !(KEYWORD_COUNT == 11) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in keywordAsString\n")
 		os.Exit(1)
 	}
@@ -754,13 +763,15 @@ func keywordAsString(key Keyword) string {
 	case KEYWORD_HERE:      return "here"
 	case KEYWORD_LET:       return "let"
 	case KEYWORD_IN:        return "in"
+	case KEYWORD_FUNC:      return "func"
+	case KEYWORD_DONE:      return "done"
 
 	}
 	return "unreachable"
 }
 
 func stringAsKeyword(str string) Keyword {
-	if !(KEYWORD_COUNT == 9) {
+	if !(KEYWORD_COUNT == 11) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords in stringAsKeyword\n")
 		os.Exit(1)
 	}
@@ -776,6 +787,8 @@ func stringAsKeyword(str string) Keyword {
 	case "here":      return KEYWORD_HERE
 	case "let":       return KEYWORD_LET
 	case "in":        return KEYWORD_IN
+	case "func":      return KEYWORD_FUNC
+	case "done":      return KEYWORD_DONE
 	default:          return Keyword(404)
 
 	}
@@ -920,7 +933,7 @@ var bindid int = 0
 
 func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 	token := tokens[i]
-	if !(KEYWORD_COUNT == 9) {
+	if !(KEYWORD_COUNT == 11) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
 		os.Exit(1)
 	}
@@ -1219,6 +1232,46 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		}
 
 		ops = append(ops, Op{op: OP_BIND, operand: Operand(len(bindings)), loc: token.loc})
+	case token.scontent == keywordAsString(KEYWORD_FUNC): // end let parsing
+		// begin function parsing
+		if !((len(tokens)-1) >= i + 1) {
+			loc := token.loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected function name but got nothing\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		if !(tokens[i + 1].kind == TOKEN_WORD) {
+			loc := tokens[i + 1].loc
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected function name to be an word\n",
+				loc.f, loc.r, loc.c)
+			os.Exit(1)
+		}
+
+		funcKeyLoc := token.loc
+		funcName   := tokens[i + 1].scontent
+		funcToks   := []Token{}
+		funcClosed := false
+		checkNameRedefinition(funcName, tokens[i + 1].loc)
+
+		i += 2
+
+		for i < len(tokens) {
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_DONE {
+				funcClosed = true
+				break
+			}
+			funcToks = append(funcToks, tokens[i])
+			i += 1
+		}
+
+		if !funcClosed {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n",
+				funcKeyLoc.f, funcKeyLoc.r, funcKeyLoc.c)
+			os.Exit(1)
+		}
+		funcs = append(funcs, Func{name: funcName, id: funccnt, ops: compileTokensIntoOps(funcToks)})
+		funccnt += 1
 	}
 	return i, ops
 }
@@ -1268,6 +1321,16 @@ func handleWord(token Token) []Op {
 				bind := bindings[bd]
 				if bind.name == token.scontent {
 					opers = append(opers, Op{op: OP_PUSH_BIND, operand: Operand(bind.index), loc: token.loc})
+					err = false
+					break
+				}
+			}
+		}
+
+		if err {
+			for _, fn := range funcs {
+				if fn.name == token.scontent {
+					opers = append(opers, Op{op: OP_CALL, operand: Operand(fn.id), loc: token.loc})
 					err = false
 					break
 				}
@@ -1329,6 +1392,14 @@ type Macro struct {
 	name string
 }
 var macros []Macro
+
+type Func struct {
+	name string
+	ops  []Op
+	id   int
+}
+var funcs []Func
+var funccnt int = 0
 
 type Memory struct {
 	name  string
