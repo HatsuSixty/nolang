@@ -41,7 +41,7 @@
 (eval-and-compile
   (defconst no-keywords
     '("if" "else" "end" "while" "do" "macro" "include" "const"
-      "increment" "reset" "memory" "here")))
+      "increment" "reset" "memory" "here" "let" "in")))
 
 (defconst no-highlights
   `((,(regexp-opt no-keywords 'symbols) . font-lock-keyword-face)))

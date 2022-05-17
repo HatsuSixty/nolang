@@ -609,7 +609,7 @@ func crossreferenceBlocks(program []Op) []Op {
 				}
 			default:
 				loc := mprogram[i].loc
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n", loc.f, loc.r, loc.c)
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro`, `const` or `let` is not allowed\n", loc.f, loc.r, loc.c)
 				os.Exit(1)
 			}
 		case OP_WHILE:
@@ -976,7 +976,8 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 
 			switch {
 			case tokenWordAsOp(tokens[i]).op == OP_IF ||
-				tokenWordAsOp(tokens[i]).op == OP_DO:
+				tokenWordAsOp(tokens[i]).op == OP_DO  ||
+				stringAsKeyword(tokens[i].scontent) == KEYWORD_IN:
 				blockStack = append(blockStack, i)
 			case tokenWordAsOp(tokens[i]).op == OP_ELSE:
 				if !(len(blockStack) > 0) {
@@ -1002,10 +1003,11 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 
 				blockStack, pop = popInt(blockStack)
 
-				if !((tokenWordAsOp(tokens[pop]).op == OP_IF)   ||
+				if !((tokenWordAsOp(tokens[pop]).op == OP_IF)  ||
 					(tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
-					(tokenWordAsOp(tokens[pop]).op == OP_DO)) {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro` or `const` is not allowed\n",
+					(tokenWordAsOp(tokens[pop]).op == OP_DO)   ||
+					(stringAsKeyword(tokens[pop].scontent) == KEYWORD_IN)) {
+					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro`, `const` or `let` is not allowed\n",
 						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 					os.Exit(1)
 				}
