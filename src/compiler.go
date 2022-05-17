@@ -100,6 +100,7 @@ const (
 	OP_PUSH_BIND OpType = iota
 
 	// others
+	OP_CALL     OpType = iota
 	OP_ERR      OpType = iota
 
 	OP_COUNT    OpType = iota
@@ -119,19 +120,365 @@ type Ctring struct {
 	id  int
 }
 
-func generateYasmLinux_x86_64(program []Op, output string) {
-	if !(OP_COUNT == 53) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateYasmLinux_x86_64\n")
+var genStrings []Ctring
+var genStrcnt    int = 0
+
+func generateOpIntelLinux_x86_64(op Op, i int, program []Op, f *os.File) {
+	if !(OP_COUNT == 54) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateOpIntelLinux_x86_64\n")
 		os.Exit(1)
 	}
 
+	f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
+	switch op.op {
+	case OP_PUSH_INT:
+		f.WriteString("    ;; -- push --\n"      )
+		f.WriteString("    mov rax, " + strconv.Itoa(int(op.operand)) + "\n")
+		f.WriteString("    push rax\n"           )
+	case OP_PUSH_STR:
+		f.WriteString("    ;; -- push str --\n"  )
+		id := genStrcnt
+		genStrings = append(genStrings, Ctring{str: string(op.operstr), id: id})
+		genStrcnt += 1
+		f.WriteString("    push " + strconv.Itoa(len(op.operstr)) + "\n")
+		f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
+	case OP_PUSH_CSTR:
+		f.WriteString("    ;; -- push cstr --\n" )
+		id := genStrcnt
+		genStrings = append(genStrings, Ctring{str: string(op.operstr), id: id})
+		genStrcnt += 1
+		f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
+	case OP_PUSH_MEM:
+		f.WriteString("    ;; -- push mem --\n"  )
+		f.WriteString("    push mem_" + strconv.Itoa(int(op.operand)) + "\n")
+	case OP_PLUS:
+		f.WriteString("    ;; -- plus --\n"      )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    add rax, rbx\n"       )
+		f.WriteString("    push rax\n"           )
+	case OP_MINUS:
+		f.WriteString("    ;; -- minus --\n"     )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    sub rbx, rax\n"       )
+		f.WriteString("    push rbx\n"           )
+	case OP_MULT:
+		f.WriteString("    ;; -- mult --\n"      )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    mul rbx\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_DIVMOD:
+		f.WriteString("    ;; -- divmod --\n"    )
+		f.WriteString("    xor rdx, rdx\n"       )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    div rbx\n"            )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rdx\n"           )
+	case OP_PRINT:
+		f.WriteString("    ;; -- print --\n"     )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    call print\n"         )
+	case OP_SYSCALL0:
+		f.WriteString("    ;; -- syscall0 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL1:
+		f.WriteString("    ;; -- syscall1 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL2:
+		f.WriteString("    ;; -- syscall2 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    pop rsi\n"            )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL3:
+		f.WriteString("    ;; -- syscall3 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    pop rsi\n"            )
+		f.WriteString("    pop rdx\n"            )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL4:
+		f.WriteString("    ;; -- syscall4 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    pop rsi\n"            )
+		f.WriteString("    pop rdx\n"            )
+		f.WriteString("    pop r10\n"            )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL5:
+		f.WriteString("    ;; -- syscall5 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    pop rsi\n"            )
+		f.WriteString("    pop rdx\n"            )
+		f.WriteString("    pop r10\n"            )
+		f.WriteString("    pop r8\n"             )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_SYSCALL6:
+		f.WriteString("    ;; -- syscall6 --\n"  )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rdi\n"            )
+		f.WriteString("    pop rsi\n"            )
+		f.WriteString("    pop rdx\n"            )
+		f.WriteString("    pop r10\n"            )
+		f.WriteString("    pop r8\n"             )
+		f.WriteString("    pop r9\n"             )
+		f.WriteString("    syscall\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_LOAD8:
+		f.WriteString("    ;; -- load8 --\n"     )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    xor rbx, rbx\n"       )
+		f.WriteString("    mov bl, [rax]\n"      )
+		f.WriteString("    push rbx\n"           )
+	case OP_STORE8:
+		f.WriteString("    ;; -- store8 --\n"    )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    mov [rax], bl\n"      )
+	case OP_LOAD16:
+		f.WriteString("    ;; -- load16 --\n"    )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    xor rbx, rbx\n"       )
+		f.WriteString("    mov bx, [rax]\n"      )
+		f.WriteString("    push rbx\n"           )
+	case OP_STORE16:
+		f.WriteString("    ;; -- store16 --\n"   )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    mov [rax], bx\n"      )
+	case OP_LOAD32:
+		f.WriteString("    ;; -- load32 --\n"    )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    xor rbx, rbx\n"       )
+		f.WriteString("    mov ebx, [rax]\n"     )
+		f.WriteString("    push rbx\n"           )
+	case OP_STORE32:
+		f.WriteString("    ;; -- store32 --\n"   )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    mov [rax], ebx\n"     )
+	case OP_LOAD64:
+		f.WriteString("    ;; -- load64 --\n"    )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    xor rbx, rbx\n"       )
+		f.WriteString("    mov rbx, [rax]\n"     )
+		f.WriteString("    push rbx\n"           )
+	case OP_STORE64:
+		f.WriteString("    ;; -- store64 --\n"   )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    mov [rax], rbx\n"     )
+	case OP_EQ:
+		f.WriteString("    ;; -- equal --\n"     )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmove rcx, rdx\n"     )
+		f.WriteString("    push rcx\n"           )
+	case OP_GT:
+		f.WriteString("    ;; -- grtr than --\n" )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmovg rcx, rdx\n"     )
+		f.WriteString("    push rcx\n"           )
+	case OP_LT:
+		f.WriteString("    ;; -- less than --\n" )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmovl rcx, rdx\n"     )
+		f.WriteString("    push rcx\n"           )
+	case OP_GE:
+		f.WriteString("    ;; -- grtr equl --\n" )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmovge rcx, rdx\n"    )
+		f.WriteString("    push rcx\n"           )
+	case OP_LE:
+		f.WriteString("    ;; -- less equl --\n" )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmovle rcx, rdx\n"    )
+		f.WriteString("    push rcx\n"           )
+	case OP_NE:
+		f.WriteString("    ;; -- not equal --\n" )
+		f.WriteString("    mov rcx, 0\n"         )
+		f.WriteString("    mov rdx, 1\n"         )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    cmp rax, rbx\n"       )
+		f.WriteString("    cmovne rcx, rdx\n"    )
+		f.WriteString("    push rcx\n"           )
+	case OP_IF:
+		f.WriteString("    ;; -- if --\n"        )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    test rax, rax\n"      )
+		f.WriteString("    jz addr_" + strconv.Itoa(int(op.operand)) + "\n")
+	case OP_ELSE:
+		f.WriteString("    ;; -- else --\n"      )
+		f.WriteString("    jmp addr_" + strconv.Itoa(int(op.operand)) + "\n")
+	case OP_END:
+		f.WriteString("    ;; -- end --\n"       )
+		if (i + 1) != int(op.operand) {
+			f.WriteString("    jmp addr_" + strconv.Itoa(int(op.operand)) + "\n")
+		}
+		if len(program) <= (i + 1) {
+			f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
+		}
+	case OP_WHILE:
+		f.WriteString("    ;; -- while --\n"     )
+	case OP_DO:
+		f.WriteString("    ;; -- do --\n"        )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    test rax, rax\n"      )
+		f.WriteString("    jz addr_" + strconv.Itoa(int(op.operand)) + "\n")
+	case OP_DUP:
+		f.WriteString("    ;; -- dup --\n"       )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rax\n"           )
+	case OP_DROP:
+		f.WriteString("    ;; -- drop --\n"      )
+		f.WriteString("    pop rax\n"            )
+	case OP_SWAP:
+		f.WriteString("    ;; -- swap --\n"      )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rbx\n"           )
+	case OP_OVER:
+		f.WriteString("    ;; -- over --\n"      )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    push rbx\n"           )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rbx\n"           )
+	case OP_ROT:
+		f.WriteString("    ;; -- rot --\n"       )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rcx\n"            )
+		f.WriteString("    push rbx\n"           )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rcx\n"           )
+	case OP_2DUP:
+		f.WriteString("    ;; -- 2dup --\n"      )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    push rbx\n"           )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rbx\n"           )
+		f.WriteString("    push rax\n"           )
+	case OP_2SWAP:
+		f.WriteString("    ;; -- 2swap --\n"     )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    pop rcx\n"            )
+		f.WriteString("    pop rdx\n"            )
+		f.WriteString("    push rax\n"           )
+		f.WriteString("    push rbx\n"           )
+		f.WriteString("    push rcx\n"           )
+		f.WriteString("    push rdx\n"           )
+	case OP_SHL:
+		f.WriteString("    ;; -- shl --\n"       )
+		f.WriteString("    pop rcx\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    shl rbx, cl\n"        )
+		f.WriteString("    push rbx\n"           )
+	case OP_SHR:
+		f.WriteString("    ;; -- shr --\n"       )
+		f.WriteString("    pop rcx\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    shr rbx, cl\n"        )
+		f.WriteString("    push rbx\n"           )
+	case OP_OR:
+		f.WriteString("    ;; -- or --\n"        )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    or rbx, rax\n"        )
+		f.WriteString("    push rbx\n"           )
+	case OP_AND:
+		f.WriteString("    ;; -- and --\n"       )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    pop rbx\n"            )
+		f.WriteString("    and rbx, rax\n"       )
+		f.WriteString("    push rbx\n"           )
+	case OP_NOT:
+		f.WriteString("    ;; -- not --\n"       )
+		f.WriteString("    pop rax\n"            )
+		f.WriteString("    not rax\n"            )
+		f.WriteString("    push rax\n"           )
+	case OP_ARGV:
+		f.WriteString("    ;; -- argv --\n"      )
+		f.WriteString("    mov rax, [args_ptr]\n")
+		f.WriteString("    add rax, 8\n"         )
+		f.WriteString("    push rax\n"           )
+	case OP_ARGC:
+		f.WriteString("    ;; -- argc --\n"      )
+		f.WriteString("    mov rax, [args_ptr]\n")
+		f.WriteString("    mov rax, [rax]\n"     )
+		f.WriteString("    push rax\n"           )
+	case OP_BIND:
+		f.WriteString("    ;; -- bind --\n"      )
+		f.WriteString("    mov rax, [ret_stack_rsp]\n")
+		f.WriteString("    sub rax, " + strconv.Itoa(int(op.operand) * 8) + "\n")
+		f.WriteString("    mov [ret_stack_rsp], rax\n")
+		progop := int(op.operand)
+		for progop > 0 {
+			f.WriteString("    pop rbx\n")
+			f.WriteString("    mov [rax+" + strconv.Itoa((int(progop) - 1) * 8) + "], rbx\n")
+			progop -= 1
+		}
+	case OP_UNBIND:
+		f.WriteString("    ;; -- unbind --\n"         )
+		f.WriteString("    mov rax, [ret_stack_rsp]\n")
+		f.WriteString("    add rax, " + strconv.Itoa(int(op.operand) * 8) + "\n")
+		f.WriteString("    mov [ret_stack_rsp], rax\n")
+	case OP_PUSH_BIND:
+		f.WriteString("    ;; -- push bind --\n"      )
+		f.WriteString("    mov rax, [ret_stack_rsp]\n")
+		f.WriteString("    add rax, " + strconv.Itoa(int(op.operand) * 8) + "\n")
+		f.WriteString("    push QWORD [rax]\n"        )
+	case OP_CALL:
+		f.WriteString("    ;; -- call --\n"           )
+		f.WriteString("    call proc_" + strconv.Itoa(int(op.operand)) + "\n")
+	default:
+		fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateOpIntelLinux_x86_64)\n")
+		os.Exit(2)
+	}
+}
+
+func generateYasmLinux_x86_64(program []Op, output string) {
 	f, err := os.OpenFile(output, os.O_RDWR | os.O_CREATE, 0644)
 	if isError(err) {
 		os.Exit(3)
 	}
-
-	strings := []Ctring{}
-	strcnt  := 0
 
 	f.WriteString("BITS 64\n"                              )
 	f.WriteString("segment .text\n"                        )
@@ -174,346 +521,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    mov rax, ret_stack_end\n"           )
 	f.WriteString("    mov [ret_stack_rsp], rax\n"         )
 	for i := range program {
-		f.WriteString("addr_" + strconv.Itoa(i) + ":\n")
-		switch program[i].op {
-		case OP_PUSH_INT:
-			f.WriteString("    ;; -- push --\n"      )
-			f.WriteString("    mov rax, " + strconv.Itoa(int(program[i].operand)) + "\n")
-			f.WriteString("    push rax\n"           )
-		case OP_PUSH_STR:
-			f.WriteString("    ;; -- push str --\n"  )
-			id := strcnt
-			strings = append(strings, Ctring{str: string(program[i].operstr), id: id})
-			strcnt += 1
-			f.WriteString("    push " + strconv.Itoa(len(program[i].operstr)) + "\n")
-			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
-		case OP_PUSH_CSTR:
-			f.WriteString("    ;; -- push cstr --\n" )
-			id := strcnt
-			strings = append(strings, Ctring{str: string(program[i].operstr), id: id})
-			strcnt += 1
-			f.WriteString("    push str_" + strconv.Itoa(id) + "\n")
-		case OP_PUSH_MEM:
-			f.WriteString("    ;; -- push mem --\n"  )
-			f.WriteString("    push mem_" + strconv.Itoa(int(program[i].operand)) + "\n")
-		case OP_PLUS:
-			f.WriteString("    ;; -- plus --\n"      )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    add rax, rbx\n"       )
-			f.WriteString("    push rax\n"           )
-		case OP_MINUS:
-			f.WriteString("    ;; -- minus --\n"     )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    sub rbx, rax\n"       )
-			f.WriteString("    push rbx\n"           )
-		case OP_MULT:
-			f.WriteString("    ;; -- mult --\n"      )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    mul rbx\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_DIVMOD:
-			f.WriteString("    ;; -- divmod --\n"    )
-			f.WriteString("    xor rdx, rdx\n"       )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    div rbx\n"            )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rdx\n"           )
-		case OP_PRINT:
-			f.WriteString("    ;; -- print --\n"     )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    call print\n"         )
-		case OP_SYSCALL0:
-			f.WriteString("    ;; -- syscall0 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL1:
-			f.WriteString("    ;; -- syscall1 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL2:
-			f.WriteString("    ;; -- syscall2 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    pop rsi\n"            )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL3:
-			f.WriteString("    ;; -- syscall3 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    pop rsi\n"            )
-			f.WriteString("    pop rdx\n"            )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL4:
-			f.WriteString("    ;; -- syscall4 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    pop rsi\n"            )
-			f.WriteString("    pop rdx\n"            )
-			f.WriteString("    pop r10\n"            )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL5:
-			f.WriteString("    ;; -- syscall5 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    pop rsi\n"            )
-			f.WriteString("    pop rdx\n"            )
-			f.WriteString("    pop r10\n"            )
-			f.WriteString("    pop r8\n"             )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_SYSCALL6:
-			f.WriteString("    ;; -- syscall6 --\n"  )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rdi\n"            )
-			f.WriteString("    pop rsi\n"            )
-			f.WriteString("    pop rdx\n"            )
-			f.WriteString("    pop r10\n"            )
-			f.WriteString("    pop r8\n"             )
-			f.WriteString("    pop r9\n"             )
-			f.WriteString("    syscall\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_LOAD8:
-			f.WriteString("    ;; -- load8 --\n"     )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    xor rbx, rbx\n"       )
-			f.WriteString("    mov bl, [rax]\n"      )
-			f.WriteString("    push rbx\n"           )
-		case OP_STORE8:
-			f.WriteString("    ;; -- store8 --\n"    )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    mov [rax], bl\n"      )
-		case OP_LOAD16:
-			f.WriteString("    ;; -- load16 --\n"    )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    xor rbx, rbx\n"       )
-			f.WriteString("    mov bx, [rax]\n"      )
-			f.WriteString("    push rbx\n"           )
-		case OP_STORE16:
-			f.WriteString("    ;; -- store16 --\n"   )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    mov [rax], bx\n"      )
-		case OP_LOAD32:
-			f.WriteString("    ;; -- load32 --\n"    )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    xor rbx, rbx\n"       )
-			f.WriteString("    mov ebx, [rax]\n"     )
-			f.WriteString("    push rbx\n"           )
-		case OP_STORE32:
-			f.WriteString("    ;; -- store32 --\n"   )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    mov [rax], ebx\n"     )
-		case OP_LOAD64:
-			f.WriteString("    ;; -- load64 --\n"    )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    xor rbx, rbx\n"       )
-			f.WriteString("    mov rbx, [rax]\n"     )
-			f.WriteString("    push rbx\n"           )
-		case OP_STORE64:
-			f.WriteString("    ;; -- store64 --\n"   )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    mov [rax], rbx\n"     )
-		case OP_EQ:
-			f.WriteString("    ;; -- equal --\n"     )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmove rcx, rdx\n"     )
-			f.WriteString("    push rcx\n"           )
-		case OP_GT:
-			f.WriteString("    ;; -- grtr than --\n" )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmovg rcx, rdx\n"     )
-			f.WriteString("    push rcx\n"           )
-		case OP_LT:
-			f.WriteString("    ;; -- less than --\n" )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmovl rcx, rdx\n"     )
-			f.WriteString("    push rcx\n"           )
-		case OP_GE:
-			f.WriteString("    ;; -- grtr equl --\n" )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmovge rcx, rdx\n"    )
-			f.WriteString("    push rcx\n"           )
-		case OP_LE:
-			f.WriteString("    ;; -- less equl --\n" )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmovle rcx, rdx\n"    )
-			f.WriteString("    push rcx\n"           )
-		case OP_NE:
-			f.WriteString("    ;; -- not equal --\n" )
-			f.WriteString("    mov rcx, 0\n"         )
-			f.WriteString("    mov rdx, 1\n"         )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    cmp rax, rbx\n"       )
-			f.WriteString("    cmovne rcx, rdx\n"    )
-			f.WriteString("    push rcx\n"           )
-		case OP_IF:
-			f.WriteString("    ;; -- if --\n"        )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    test rax, rax\n"      )
-			f.WriteString("    jz addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
-		case OP_ELSE:
-			f.WriteString("    ;; -- else --\n"      )
-			f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
-		case OP_END:
-			f.WriteString("    ;; -- end --\n"       )
-			if (i + 1) != int(program[i].operand) {
-				f.WriteString("    jmp addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
-			}
-			if len(program) <= (i + 1) {
-				f.WriteString("addr_" + strconv.Itoa(i + 1) + ":\n")
-			}
-		case OP_WHILE:
-			f.WriteString("    ;; -- while --\n"     )
-		case OP_DO:
-			f.WriteString("    ;; -- do --\n"        )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    test rax, rax\n"      )
-			f.WriteString("    jz addr_" + strconv.Itoa(int(program[i].operand)) + "\n")
-		case OP_DUP:
-			f.WriteString("    ;; -- dup --\n"       )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rax\n"           )
-		case OP_DROP:
-			f.WriteString("    ;; -- drop --\n"      )
-			f.WriteString("    pop rax\n"            )
-		case OP_SWAP:
-			f.WriteString("    ;; -- swap --\n"      )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rbx\n"           )
-		case OP_OVER:
-			f.WriteString("    ;; -- over --\n"      )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    push rbx\n"           )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rbx\n"           )
-		case OP_ROT:
-			f.WriteString("    ;; -- rot --\n"       )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rcx\n"            )
-			f.WriteString("    push rbx\n"           )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rcx\n"           )
-		case OP_2DUP:
-			f.WriteString("    ;; -- 2dup --\n"      )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    push rbx\n"           )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rbx\n"           )
-			f.WriteString("    push rax\n"           )
-		case OP_2SWAP:
-			f.WriteString("    ;; -- 2swap --\n"     )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    pop rcx\n"            )
-			f.WriteString("    pop rdx\n"            )
-			f.WriteString("    push rax\n"           )
-			f.WriteString("    push rbx\n"           )
-			f.WriteString("    push rcx\n"           )
-			f.WriteString("    push rdx\n"           )
-		case OP_SHL:
-			f.WriteString("    ;; -- shl --\n"       )
-			f.WriteString("    pop rcx\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    shl rbx, cl\n"        )
-			f.WriteString("    push rbx\n"           )
-		case OP_SHR:
-			f.WriteString("    ;; -- shr --\n"       )
-			f.WriteString("    pop rcx\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    shr rbx, cl\n"        )
-			f.WriteString("    push rbx\n"           )
-		case OP_OR:
-			f.WriteString("    ;; -- or --\n"        )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    or rbx, rax\n"        )
-			f.WriteString("    push rbx\n"           )
-		case OP_AND:
-			f.WriteString("    ;; -- and --\n"       )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    pop rbx\n"            )
-			f.WriteString("    and rbx, rax\n"       )
-			f.WriteString("    push rbx\n"           )
-		case OP_NOT:
-			f.WriteString("    ;; -- not --\n"       )
-			f.WriteString("    pop rax\n"            )
-			f.WriteString("    not rax\n"            )
-			f.WriteString("    push rax\n"           )
-		case OP_ARGV:
-			f.WriteString("    ;; -- argv --\n"      )
-			f.WriteString("    mov rax, [args_ptr]\n")
-			f.WriteString("    add rax, 8\n"         )
-			f.WriteString("    push rax\n"           )
-		case OP_ARGC:
-			f.WriteString("    ;; -- argc --\n"      )
-			f.WriteString("    mov rax, [args_ptr]\n")
-			f.WriteString("    mov rax, [rax]\n"     )
-			f.WriteString("    push rax\n"           )
-		case OP_BIND:
-			f.WriteString("    ;; -- bind --\n"      )
-			f.WriteString("    mov rax, [ret_stack_rsp]\n")
-			f.WriteString("    sub rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
-			f.WriteString("    mov [ret_stack_rsp], rax\n")
-			progop := int(program[i].operand)
-			for progop > 0 {
-				f.WriteString("    pop rbx\n")
-				f.WriteString("    mov [rax+" + strconv.Itoa((int(progop) - 1) * 8) + "], rbx\n")
-				progop -= 1
-			}
-		case OP_UNBIND:
-			f.WriteString("    ;; -- unbind --\n"         )
-			f.WriteString("    mov rax, [ret_stack_rsp]\n")
-			f.WriteString("    add rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
-			f.WriteString("    mov [ret_stack_rsp], rax\n")
-		case OP_PUSH_BIND:
-			f.WriteString("    ;; -- push bind --\n"      )
-			f.WriteString("    mov rax, [ret_stack_rsp]\n")
-			f.WriteString("    add rax, " + strconv.Itoa(int(program[i].operand) * 8) + "\n")
-			f.WriteString("    push QWORD [rax]\n"        )
-		default:
-			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateYasmLinux_x86_64)\n")
-			os.Exit(2)
-		}
+		generateOpIntelLinux_x86_64(program[i], i, program, f)
 	}
 	f.WriteString("    ;; -- built-in exit --\n" )
 	f.WriteString("    mov rax, 60\n"            )
@@ -529,8 +537,8 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("ret_stack: resb " + strconv.Itoa(X86_64_RET_STACK_CAP) + "\n")
 	f.WriteString("ret_stack_end:\n"             )
 	f.WriteString("segment .data\n"              )
-	for s := range strings {
-		curs := strings[s]
+	for s := range genStrings {
+		curs := genStrings[s]
 		f.WriteString("str_" + strconv.Itoa(curs.id) + ": db ")
 		sbytes := []byte(curs.str)
 		for sb := range sbytes {
@@ -555,7 +563,7 @@ func crossreferenceBlocks(program []Op) []Op {
 	var blockIp int
 	var whileIp int
 	for i := range mprogram {
-		if !(OP_COUNT == 53) {
+		if !(OP_COUNT == 54) {
 			fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in crossreferenceBlocks. Add here only operations that form blocks\n")
 			os.Exit(1)
 		}
@@ -770,7 +778,7 @@ func stringAsKeyword(str string) Keyword {
 }
 
 func tokenWordAsOp(token Token) Op {
-	if !(OP_COUNT == 53) {
+	if !(OP_COUNT == 54) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in tokenWordAsOp\n")
 		os.Exit(1)
 	}
@@ -967,7 +975,7 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 			}
 
 
-			if !(OP_COUNT == 53) {
+			if !(OP_COUNT == 54) {
 				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
 				os.Exit(1)
 			}
