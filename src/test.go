@@ -110,7 +110,7 @@ func runTestForFile(file string, folder string) {
 	cmdRunEchoInfo("rm -f " + wd + "/output*", true)
 
 	tce, ignored := loadTestCaseForFile(file, folder)
-	tci          := cmdRunReturnTestCase(nobin + " -c " + file + " -r")
+	tci          := cmdRunReturnTestCase(nobin + " -c " + file + " -r -s")
 
 	if !testCaseEqual(tce, tci) && !ignored {
 		fmt.Fprintf(os.Stderr, "ERROR: Test failed:\n")
@@ -162,7 +162,7 @@ func updateOutputForFile(file string, folder string) {
 	cmdRunEchoInfo("rm -f " + wd + "/" + folder + "/output*", true)
 	cmdRunEchoInfo("rm -f " + wd + "/output*", true)
 
-	tc := cmdRunReturnTestCase(nobin + " -c " + file + " -r")
+	tc := cmdRunReturnTestCase(nobin + " -c " + file + " -r -s")
 	saveTestCase(tc, fileNameWithoutExt(file) + ".txt")
 }
 

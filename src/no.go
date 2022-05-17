@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"bytes"
+	"os/exec"
 )
 
 func main() {
@@ -40,6 +42,22 @@ func main() {
 	if run {
 		wd, err := os.Getwd()
 		if err != nil {}
-		cmdRunEchoInfo(wd + "/" + outfile, false)
+		if !silent {
+			fmt.Println("[CMD]", wd + "/" + outfile)
+		}
+
+		var buf bytes.Buffer
+
+		cmd := exec.Command("/bin/sh", "-c", wd + "/" + outfile)
+		cmd.Stdout = &buf
+		cmd.Stderr = &buf
+
+		err2 := cmd.Run()
+		fmt.Print(buf.String())
+
+		if err2 != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Shell command error: %s\n", err)
+			os.Exit(1)
+		}
 	}
 }
