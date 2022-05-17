@@ -56,7 +56,7 @@ func main() {
 		fmt.Print(buf.String())
 
 		if err2 != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: Shell command error: %s\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: Shell command error: %s\n", err2)
 			os.Exit(1)
 		}
 	}

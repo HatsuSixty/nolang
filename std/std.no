@@ -9,6 +9,26 @@ macro nop end
 const true  1 end
 const false 0 end
 
+/// strings
+
+const Str.count sizeof(int) increment end
+const Str.data  sizeof(ptr) increment end
+const sizeof(Str)               reset end
+
+macro !Str
+  let n s ptr in
+    n ptr Str.count + !64
+    s ptr Str.data  + !64
+  end
+end
+
+macro @Str
+  let ptr in
+    ptr Str.count + @64
+    ptr Str.data  + @64
+  end
+end
+
 /// Standard streams
 const stdin  0 end
 const stdout 1 end
