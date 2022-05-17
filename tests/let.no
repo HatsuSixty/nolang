@@ -1,0 +1,15 @@
+40 50 60
+let a b c in
+  a b c
+  let a b c in
+    a b c
+    let a b c in
+      a b c
+      let a b c in
+        a print
+        b print
+        c print
+      end
+    end
+  end
+end
