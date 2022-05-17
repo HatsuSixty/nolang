@@ -603,10 +603,6 @@ func crossreferenceBlocks(program []Op) []Op {
 			case mprogram[blockIp].op == OP_BIND:
 				mprogram[i].op = OP_UNBIND
 				mprogram[i].operand = mprogram[blockIp].operand
-				var iii Operand
-				for iii = 0; iii < mprogram[blockIp].operand; iii += 1 {
-					bindings = bindings[:len(bindings)-1]
-				}
 			default:
 				loc := mprogram[i].loc
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro`, `const` or `let` is not allowed\n", loc.f, loc.r, loc.c)
@@ -1170,6 +1166,7 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(loct)})
 		// end here parsing
 	case token.scontent == keywordAsString(KEYWORD_LET): // begin let parsing
+		bindings = []Bind{}
 		if !((len(tokens)-1) >= i + 1) {
 			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Expected the names of items to bind but got nothing\n",
 				token.loc.f, token.loc.r, token.loc.c)
@@ -1182,9 +1179,9 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 			os.Exit(1)
 		}
 
-		id  := 0
 		err := true
 		i += 1
+		bindid := 0
 		for i < len(tokens) {
 			if stringAsKeyword(tokens[i].scontent) == KEYWORD_IN {
 				err = false
@@ -1198,8 +1195,8 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 				os.Exit(1)
 			}
 
-			bindings = append(bindings, Bind{name: tokens[i].scontent, index: id})
-			id += 1
+			bindings = append(bindings, Bind{name: tokens[i].scontent, index: bindid})
+			bindid += 1
 			i  += 1
 		}
 
