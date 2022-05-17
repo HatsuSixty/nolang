@@ -123,7 +123,8 @@ type Ctring struct {
 var genStrings []Ctring
 var genStrcnt    int = 0
 
-func generateOpIntelLinux_x86_64(op Op, i int, program []Op, f *os.File) {
+func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File) {
+	op := program[i]
 	if !(OP_COUNT == 54) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops in generateOpIntelLinux_x86_64\n")
 		os.Exit(1)
@@ -521,7 +522,7 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 	f.WriteString("    mov rax, ret_stack_end\n"           )
 	f.WriteString("    mov [ret_stack_rsp], rax\n"         )
 	for i := range program {
-		generateOpIntelLinux_x86_64(program[i], i, program, f)
+		generateOpIntelLinux_x86_64(i, program, f)
 	}
 	f.WriteString("    ;; -- built-in exit --\n" )
 	f.WriteString("    mov rax, 60\n"            )
