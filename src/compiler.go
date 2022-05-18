@@ -507,7 +507,15 @@ func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File, addrp string) 
 		f.WriteString("    push QWORD [rax]\n"        )
 	case OP_CALL:
 		f.WriteString("    ;; -- call --\n"           )
-		f.WriteString("    call proc_" + strconv.Itoa(int(op.operand)) + "\n")
+		f.WriteString("    mov rax, [ret_stack_rsp]\n")
+		f.WriteString("    sub rax, " + strconv.Itoa(1 * 8) + "\n")
+		f.WriteString("    mov [ret_stack_rsp], rax\n")
+		f.WriteString("    mov rbx, " + addrp + strconv.Itoa(i + 1) + "\n")
+		f.WriteString("    mov [rax+" + strconv.Itoa(1 * 8) + "], rbx\n")
+		f.WriteString("    jmp proc_" + strconv.Itoa(int(op.operand)) + "\n")
+		if len(program) <= (i + 1) {
+			f.WriteString(addrp + strconv.Itoa(i + 1) + ":\n")
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "ERROR: Unreachable (generateOpIntelLinux_x86_64)\n")
 		os.Exit(2)
@@ -526,7 +534,12 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		for o := range fn.ops {
 			generateOpIntelLinux_x86_64(o, fn.ops, f, "p" + strconv.Itoa(fn.id) + "addr_")
 		}
-		f.WriteString("    ret\n")
+		f.WriteString("    mov rax, [ret_stack_rsp]\n")
+		f.WriteString("    add rax, " + strconv.Itoa(1 * 8) + "\n")
+		f.WriteString("    push QWORD [rax]\n")
+		f.WriteString("    mov [ret_stack_rsp], rax\n")
+		f.WriteString("    pop rbx\n")
+		f.WriteString("    jmp rbx\n")
 	}
 	f.WriteString("global _start\n"                        )
 	f.WriteString("_start:\n"                              )
