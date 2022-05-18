@@ -60,11 +60,12 @@ macro lnot
   0 =
 done
 
-memory data sizeof(ptr) end
-memory byte sizeof(u64) end
-macro memset
+func memset
+  memory data sizeof(ptr) end
   data !64
+  memory byte sizeof(u64) end
   byte !64
+
   data @64 swap
   while dup 0 > do
     byte @64 data @64 !8
@@ -74,10 +75,10 @@ macro memset
   drop
 done
 
-memory src sizeof(ptr) end
-memory dst sizeof(ptr) end
-memory result sizeof(ptr) end
 func memcpy
+  memory src    sizeof(ptr) end
+  memory dst    sizeof(ptr) end
+  memory result sizeof(ptr) end
   dst !64
   src !64
   dst @64 swap // result
