@@ -29,6 +29,12 @@ macro @Str
   end
 done
 
+macro strlen
+  let n s in
+    n
+  end
+done
+
 /// Standard streams
 const stdin  0 end
 const stdout 1 end

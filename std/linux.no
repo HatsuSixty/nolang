@@ -317,10 +317,11 @@ const SYS_finit_module 313 end
 const -1 0 1 - end
 const AT_FDCWD 100 -1 * end
 
-const O_RDONLY 0 end
-const O_WRONLY 1 end
-const O_RDWR   2 end
-const O_CREAT 64 end
+const O_RDONLY  0 end
+const O_WRONLY  1 end
+const O_RDWR    2 end
+const O_CREAT  64 end
+const O_TRUNC 512 end
 
 // Wrappers for common syscalls
 macro read SYS_read syscall3 done

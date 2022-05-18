@@ -142,7 +142,7 @@ func runTestForFolder(folder string) {
 }
 
 func saveTestCase(tc TestCase, file string) {
-	f, err := os.OpenFile(file, os.O_RDWR | os.O_CREATE, 0644)
+	f, err := os.OpenFile(file, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 	if isError(err) {
 		os.Exit(3)
 	}

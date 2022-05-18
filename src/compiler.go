@@ -522,7 +522,7 @@ func generateOpIntelLinux_x86_64(i int, program []Op, f *os.File, addrp string) 
 }
 
 func generateYasmLinux_x86_64(program []Op, output string) {
-	f, err := os.OpenFile(output, os.O_RDWR | os.O_CREATE, 0644)
+	f, err := os.OpenFile(output, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 	if isError(err) {
 		os.Exit(3)
 	}
