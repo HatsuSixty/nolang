@@ -8,7 +8,6 @@ import (
 )
 
 // should be enough for everyone
-const MEM_CAP              int = 640000
 const X86_64_RET_STACK_CAP int = 64 * 1024
 
 // keywords
@@ -916,32 +915,6 @@ func wordExists(str string) bool {
 	return true
 }
 
-func expandMacro(macro Macro) []Op {
-	opers := []Op{}
-	if !(TOKEN_COUNT == 5) {
-		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of tokens while handling tokens for macro expansion\n")
-		os.Exit(1)
-	}
-
-	m := 0
-	for m < len(macro.toks) {
-		switch macro.toks[m].kind {
-		case TOKEN_INT:
-			opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(macro.toks[m].icontent), loc: macro.toks[m].loc})
-		case TOKEN_STR:
-			opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
-		case TOKEN_CSTR:
-			opers = append(opers, Op{op: OP_PUSH_CSTR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
-		case TOKEN_WORD:
-			opers = append(opers, handleWord(macro.toks[m])...)
-		case TOKEN_KEYWORD:
-			m, opers = handleKeyword(m, macro.toks, opers)
-		}
-		m += 1
-	}
-	return opers
-}
-
 var bindid int = 0
 
 func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
@@ -1284,7 +1257,7 @@ func handleWord(token Token) []Op {
 			curmac := macros[m]
 
 			if curmac.name == token.scontent {
-				opers = append(opers, expandMacro(curmac)...)
+				opers = append(opers, compileTokensIntoOps(curmac.toks)...)
 				err = false
 				break
 			}
