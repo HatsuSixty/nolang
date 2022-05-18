@@ -93,7 +93,7 @@ func loadTestCaseForFile(file string, folder string) (TestCase, bool) {
 		}
 		f.Close()
 	} else {
-		fmt.Fprintf(os.Stderr, "[WARNING] No output file for `%s` encountered, just testing compiles.\n",
+		fmt.Fprintf(os.Stderr, "[WARNING] No output file for `%s` encountered, just testing if it compiles.\n",
 			file)
 		ignoredfile = true
 		ignored += 1

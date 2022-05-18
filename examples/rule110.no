@@ -37,6 +37,6 @@ macro main
 
       1 +
    end drop
-end
+done
 
 main

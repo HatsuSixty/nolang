@@ -1,4 +1,4 @@
-macro N 4000000 end
+const N 4000000 end
 
 0 1 while over N < do
   over print

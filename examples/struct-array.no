@@ -8,20 +8,20 @@ memory user           sizeof(User) end
 memory users     sizeof(ptr) 100 * end
 memory users_sz        sizeof(u64) end
 
-"Jeff\n" tmp-str-to-cstr user User.name + !64
-69                       user User.age  + !64
+"Jeff\n"c user User.name + !64
+69        user User.age  + !64
 
                //usr  arr
                // \/   \/
 macro user-add // ptr ptr
   sizeof(ptr) users_sz @64 * + !64
   users_sz inc64
-end
+done
 
 macro user-pop // ptr -- ptr
   sizeof(ptr) users_sz @64 1 - * + @64
   users_sz dec64
-end
+done
 
 macro user-dump
   0 while dup users_sz @64 < do
@@ -31,7 +31,7 @@ macro user-dump
     User.age  + @64             print
     1 +
   end drop
-end
+done
 
 user users user-add
 user users user-add

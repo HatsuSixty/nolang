@@ -6,19 +6,19 @@ memory array_sz sizeof(u64) 100 * end
 macro array-push // int ptr
   sizeof(ptr) array_sz @64 * + !64
   array_sz inc64
-end
+done
 
 macro array-pop // ptr -- int
   sizeof(ptr) array_sz @64 1 - * + @64
   array_sz dec64
-end
+done
 
 macro array-dump
   0 while dup array_sz @64 < do
     array over sizeof(ptr) * + @64 print
     1 +
   end
-end
+done
 
 10 array array-push
 11 array array-push
