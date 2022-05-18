@@ -976,11 +976,8 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 
 		i += 2
 
-		blockStack := []int{}
-		pop        := 0
-		if pop == 0 {}
 		for i < len(tokens) {
-			if tokenWordAsOp(tokens[i]).op == OP_END && len(blockStack) == 0 {
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_DONE {
 				macroClosed = true
 				break
 			}
@@ -1008,51 +1005,6 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memories inside macros is not allowed\n",
 					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 				os.Exit(1)
-			}
-
-
-			if !(OP_COUNT == 54) {
-				fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of ops while parsing macro blocks. Add here only operations that are closed by `end`\n")
-				os.Exit(1)
-			}
-
-			switch {
-			case tokenWordAsOp(tokens[i]).op == OP_IF ||
-				tokenWordAsOp(tokens[i]).op == OP_DO  ||
-				stringAsKeyword(tokens[i].scontent) == KEYWORD_IN:
-				blockStack = append(blockStack, i)
-			case tokenWordAsOp(tokens[i]).op == OP_ELSE:
-				if !(len(blockStack) > 0) {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `else` does not have any block to close\n",
-						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-					os.Exit(1)
-				}
-
-				blockStack, pop = popInt(blockStack)
-				if !(tokenWordAsOp(tokens[pop]).op == OP_IF) {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `else` to close blocks that are not `if` is not allowed\n",
-						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-					os.Exit(1)
-				}
-
-				blockStack = append(blockStack, i)
-			case tokenWordAsOp(tokens[i]).op == OP_END:
-				if !(len(blockStack) > 0) {
-					fmt.Fprintf(os.Stderr, "%s:%s:%d: ERROR: `end` does not have any block to close\n",
-						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-					os.Exit(1)
-				}
-
-				blockStack, pop = popInt(blockStack)
-
-				if !((tokenWordAsOp(tokens[pop]).op == OP_IF)  ||
-					(tokenWordAsOp(tokens[pop]).op == OP_ELSE) ||
-					(tokenWordAsOp(tokens[pop]).op == OP_DO)   ||
-					(stringAsKeyword(tokens[pop].scontent) == KEYWORD_IN)) {
-					fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `end` to close blocks that are not `if`, `else`, `do`, `macro`, `const` or `let` is not allowed\n",
-						tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-					os.Exit(1)
-				}
 			}
 
 			macroToks = append(macroToks, tokens[i])

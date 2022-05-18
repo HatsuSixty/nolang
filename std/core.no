@@ -14,18 +14,18 @@ const sizeof(addr) sizeof(u64) end
 const NULL 0 end
 
 // divisions
-macro /    divmod drop       end
-macro %    divmod swap drop  end
-macro mod  %                 end
-macro div  /                 end
-//macro imod idivmod swap drop end
-//macro idiv idivmod drop      end
+macro /    divmod drop       done
+macro %    divmod swap drop  done
+macro mod  %                 done
+macro div  /                 done
+//macro imod idivmod swap drop done
+//macro idiv idivmod drop      done
 
 // increments
-macro inc64-by over @64 + swap  !64 end
-macro inc64    dup @64 1 + swap !64 end
-macro dec64    dup @64 1 - swap !64 end
-macro inc32    dup @32 1 + swap !32 end
-macro dec32    dup @32 1 - swap !32 end
-macro inc8     dup @8 1 + swap   !8 end
-macro dec8     dup @8 1 - swap   !8 end
+macro inc64-by over @64 + swap  !64 done
+macro inc64    dup @64 1 + swap !64 done
+macro dec64    dup @64 1 - swap !64 done
+macro inc32    dup @32 1 + swap !32 done
+macro dec32    dup @32 1 - swap !32 done
+macro inc8     dup @8 1 + swap   !8 done
+macro dec8     dup @8 1 - swap   !8 done

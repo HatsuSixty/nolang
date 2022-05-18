@@ -323,15 +323,15 @@ const O_RDWR   2 end
 const O_CREAT 64 end
 
 // Wrappers for common syscalls
-macro read SYS_read syscall3 end
-macro openat SYS_openat syscall4 end
-macro fstat SYS_fstat syscall2 end
-macro close SYS_close syscall1 end
-macro mmap SYS_mmap syscall6 end
-macro clock_nanosleep SYS_clock_nanosleep syscall4 end
-macro fork SYS_fork syscall0 end
-macro getpid SYS_getpid syscall0 end
-macro execve SYS_execve syscall3 end
-macro wait4 SYS_wait4 syscall4 end
-macro exit SYS_exit syscall1 end
-macro write SYS_write syscall3 end
+macro read SYS_read syscall3 done
+macro openat SYS_openat syscall4 done
+macro fstat SYS_fstat syscall2 done
+macro close SYS_close syscall1 done
+macro mmap SYS_mmap syscall6 done
+macro clock_nanosleep SYS_clock_nanosleep syscall4 done
+macro fork SYS_fork syscall0 done
+macro getpid SYS_getpid syscall0 done
+macro execve SYS_execve syscall3 done
+macro wait4 SYS_wait4 syscall4 done
+macro exit SYS_exit syscall1 done
+macro write SYS_write syscall3 done

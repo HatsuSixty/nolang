@@ -2,11 +2,11 @@ include "std.no"
 
 macro ,
   @8
-end
+done
 
 macro .
   !8
-end
+done
 
 "sus" puts
 69 mem .

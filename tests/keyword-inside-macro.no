@@ -2,6 +2,6 @@ include "std.no"
 
 macro main
   here puts "\n" puts
-end
+done
 
 main

@@ -6,9 +6,9 @@ const TMP_CAP 8 1024 * 1024 * end
 memory tmp-start TMP_CAP end
 memory tmp-size sizeof(u64) end
 
-macro tmp-clean 0 tmp-size !64 end
-macro tmp-end tmp-start tmp-size @64 + end
-macro tmp-rewind tmp-start ptr-diff tmp-size !64 end
+macro tmp-clean 0 tmp-size !64 done
+macro tmp-end tmp-start tmp-size @64 + done
+macro tmp-rewind tmp-start ptr-diff tmp-size !64 done
 
 macro tmp-alloc
   dup tmp-size @64 + TMP_CAP > if
@@ -18,19 +18,19 @@ macro tmp-alloc
 
   dup 0 tmp-end memset
   tmp-size @64 rot + tmp-size !64
-end
+done
 
-macro tmp-append over tmp-alloc memcpy end
+macro tmp-append over tmp-alloc memcpy done
 macro tmp-append-ptr
   sizeof(ptr) tmp-alloc !64
-end
+done
 ////////////
 
 macro cstrlen
   dup
   while dup @8 0 != do 1 + end
   swap -
-end
+done
 
 macro cstreq
   while
@@ -45,12 +45,12 @@ macro cstreq
   @8 0 =
   swap @8 0 =
   and
-end
+done
 
 macro cstr-to-str
   dup cstrlen swap
-end
+done
 
 macro ptr-diff
   -
-end
+done

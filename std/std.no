@@ -4,7 +4,7 @@ include "core.no"
 include "linux.no"
 include "porth.no"
 
-macro nop end
+macro nop done
 
 const true  1 end
 const false 0 end
@@ -20,14 +20,14 @@ macro !Str
     n ptr Str.count + !64
     s ptr Str.data  + !64
   end
-end
+done
 
 macro @Str
   let ptr in
     ptr Str.count + @64
     ptr Str.data  + @64
   end
-end
+done
 
 /// Standard streams
 const stdin  0 end
@@ -36,29 +36,29 @@ const stderr 2 end
 
 macro fputs
   write drop
-end
+done
 
 macro puts
   stdout fputs
-end
+done
 
 macro eputs
   stderr fputs
-end
+done
 
 macro isdigit
   dup  '0'ch >=
   swap '9'ch <=
   and
-end
+done
 
-macro tmp-str-to-cstr over 1 + tmp-alloc memcpy end
+macro tmp-str-to-cstr over 1 + tmp-alloc memcpy done
 
 //////
 
 macro lnot
   0 =
-end
+done
 
 memory data sizeof(ptr) end
 memory byte sizeof(u64) end
@@ -72,12 +72,12 @@ macro memset
     1 -
   end
   drop
-end
+done
 
 memory src sizeof(ptr) end
 memory dst sizeof(ptr) end
 memory result sizeof(ptr) end
-macro memcpy
+func memcpy
   dst !64
   src !64
   dst @64 swap // result
@@ -88,7 +88,7 @@ macro memcpy
     dst inc64
     1 -
   end drop
-end
+done
 
 // deprecated
 memory mem 640000 end
