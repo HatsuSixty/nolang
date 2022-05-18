@@ -557,6 +557,10 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		curm := memorys[mem]
 		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
 	}
+	for mem := range genmems {
+		curm := genmems[mem]
+		f.WriteString("mem_" + strconv.Itoa(curm.id) + ": resb " + strconv.Itoa(curm.alloc) + "\n")
+	}
 	f.WriteString("args_ptr: resb 8\n"           )
 	f.WriteString("ret_stack_rsp: resb 8\n"      )
 	f.WriteString("ret_stack: resb " + strconv.Itoa(X86_64_RET_STACK_CAP) + "\n")
@@ -660,7 +664,7 @@ func crossreferenceBlocks(program []Op) []Op {
 		var unclosedBlock int
 		stack, unclosedBlock = popInt(stack)
 		loc := mprogram[unclosedBlock].loc
-		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", loc.f, loc.r, loc.c)
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block %d\n", loc.f, loc.r, loc.c, mprogram[unclosedBlock].op)
 		os.Exit(1)
 	}
 
@@ -915,9 +919,36 @@ func wordExists(str string) bool {
 	return true
 }
 
+func expandMacro(macro Macro) []Op {
+	opers := []Op{}
+	if !(TOKEN_COUNT == 5) {
+		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of tokens while handling tokens for macro expansion\n")
+		os.Exit(1)
+	}
+
+	m := 0
+	for m < len(macro.toks) {
+		switch macro.toks[m].kind {
+		case TOKEN_INT:
+			opers = append(opers, Op{op: OP_PUSH_INT, operand: Operand(macro.toks[m].icontent), loc: macro.toks[m].loc})
+		case TOKEN_STR:
+			opers = append(opers, Op{op: OP_PUSH_STR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
+		case TOKEN_CSTR:
+			opers = append(opers, Op{op: OP_PUSH_CSTR, operstr: OperStr(macro.toks[m].scontent), loc: macro.toks[m].loc})
+		case TOKEN_WORD:
+			opers = append(opers, handleWord(macro.toks[m])...)
+		case TOKEN_KEYWORD:
+			m, opers = handleKeyword(m, macro.toks, opers, false)
+		}
+		m += 1
+	}
+	return opers
+}
+
 var bindid int = 0
 
-func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
+func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op) {
+	if insideproc {}
 	token := tokens[i]
 	if !(KEYWORD_COUNT == 11) {
 		fmt.Fprintf(os.Stderr, "Assertion Failed: Exhaustive handling of keywords\n")
@@ -1129,7 +1160,11 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		}
 
 		memoryVal := evaluateAtCompileTime(memoryToks, memoryKeyLoc)
-		memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
+		if insideproc {
+			locmems = append(locmems, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
+		} else {
+			memorys = append(memorys, Memory{name: memoryName, id: memcnt, alloc: memoryVal})
+		}
 		memcnt += 1
 	case token.scontent == keywordAsString(KEYWORD_HERE): // end memory parsing
 		// begin here parsing
@@ -1225,12 +1260,6 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 				os.Exit(1)
 			}
 
-			if stringAsKeyword(tokens[i].scontent) == KEYWORD_MEMORY {
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memories inside functions is not allowed (for now)\n",
-					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-				os.Exit(1)
-			}
-
 			funcToks = append(funcToks, tokens[i])
 			i += 1
 		}
@@ -1240,7 +1269,9 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 				funcKeyLoc.f, funcKeyLoc.r, funcKeyLoc.c)
 			os.Exit(1)
 		}
-		funcs = append(funcs, Func{name: funcName, id: funccnt, ops: compileTokensIntoOps(funcToks)})
+		funcs = append(funcs, Func{name: funcName, id: funccnt, ops: compileTokensIntoOps(funcToks, true)})
+		genmems = append(genmems, locmems...)
+		locmems = []Memory{}
 		funccnt += 1
 		// end function parsing
 	}
@@ -1257,7 +1288,7 @@ func handleWord(token Token) []Op {
 			curmac := macros[m]
 
 			if curmac.name == token.scontent {
-				opers = append(opers, compileTokensIntoOps(curmac.toks)...)
+				opers = append(opers, expandMacro(curmac)...)
 				err = false
 				break
 			}
@@ -1278,6 +1309,18 @@ func handleWord(token Token) []Op {
 		if err {
 			for mem := range memorys {
 				curmem := memorys[mem]
+
+				if curmem.name == token.scontent {
+					opers = append(opers, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
+					err = false
+					break
+				}
+			}
+		}
+
+		if err {
+			for mem := range locmems {
+				curmem := locmems[mem]
 
 				if curmem.name == token.scontent {
 					opers = append(opers, Op{op: OP_PUSH_MEM, operand: Operand(curmem.id), loc: token.loc})
@@ -1350,6 +1393,14 @@ func checkNameRedefinition(name string, loc Location) {
 			os.Exit(1)
 		}
 	}
+
+	for _, fn := range funcs {
+		if fn.name == name {
+			fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Redefition of already existing function: %s\n",
+				loc.f, loc.r, loc.c, name)
+			os.Exit(1)
+		}
+	}
 }
 
 type Const struct {
@@ -1378,6 +1429,8 @@ type Memory struct {
 	alloc int
 }
 var memorys []Memory
+var locmems []Memory
+var genmems []Memory
 var memcnt  int = 0
 
 type Bind struct {
@@ -1386,7 +1439,7 @@ type Bind struct {
 }
 var bindings []Bind
 
-func compileTokensIntoOps(tokens []Token) []Op {
+func compileTokensIntoOps(tokens []Token, insideproc bool) []Op {
 	var ops []Op
 
 	if !(TOKEN_COUNT == 5) {
@@ -1408,7 +1461,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 		case TOKEN_WORD:
 			ops = append(ops, handleWord(token)...)
 		case TOKEN_KEYWORD:
-			i, ops = handleKeyword(i, tokens, ops)
+			i, ops = handleKeyword(i, tokens, ops, insideproc)
 		default:
 			fmt.Fprintf(os.Stderr, "ERROR: Unreachable (compileTokensIntoOps)\n")
 			os.Exit(1)
@@ -1424,7 +1477,7 @@ func compileTokensIntoOps(tokens []Token) []Op {
 
 func compileFileIntoOps(filepath string) []Op {
 	tokens := lexfile(filepath)
-	ops    := compileTokensIntoOps(tokens)
+	ops    := compileTokensIntoOps(tokens, false)
 	return ops
 }
 
