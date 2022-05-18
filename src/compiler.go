@@ -986,20 +986,26 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 			}
 
 			// @disallow inside macros
-			if tokens[i].scontent == keywordAsString(KEYWORD_MACRO) {
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
-					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
-				os.Exit(1)
-			}
-
-			if tokens[i].scontent == keywordAsString(KEYWORD_CONST) {
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_CONST {
 				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside macros is not allowed\n",
 					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 				os.Exit(1)
 			}
 
-			if tokens[i].scontent == keywordAsString(KEYWORD_MEMORY) {
-				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memory blocks inside macros is not allowed\n",
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_MACRO {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside macros is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_FUNC {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating functions inside macros is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_MEMORY {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memories inside macros is not allowed\n",
 					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
 				os.Exit(1)
 			}
@@ -1274,6 +1280,32 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 				funcClosed = true
 				break
 			}
+
+			// @disallow inside func
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_CONST {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating constants inside functions is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_MACRO {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating macros inside functions is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_FUNC {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating functions inside functions is not allowed\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
+			if stringAsKeyword(tokens[i].scontent) == KEYWORD_MEMORY {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Creating memories inside functions is not allowed (for now)\n",
+					tokens[i].loc.f, tokens[i].loc.r, tokens[i].loc.c)
+				os.Exit(1)
+			}
+
 			funcToks = append(funcToks, tokens[i])
 			i += 1
 		}
@@ -1285,6 +1317,7 @@ func handleKeyword(i int, tokens []Token, ops []Op) (int, []Op) {
 		}
 		funcs = append(funcs, Func{name: funcName, id: funccnt, ops: compileTokensIntoOps(funcToks)})
 		funccnt += 1
+		// end function parsing
 	}
 	return i, ops
 }
