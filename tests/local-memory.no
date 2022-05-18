@@ -1,0 +1,9 @@
+include "std.no"
+
+func main
+  memory hello sizeof(Str) end
+  "Hello, world!\n" hello !Str
+  hello @Str puts
+done
+
+main
