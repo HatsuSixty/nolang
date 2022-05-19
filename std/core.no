@@ -9,7 +9,6 @@ const sizeof(u8)  1 end
 const sizeof(ptr)  sizeof(u64) end
 const sizeof(bool) sizeof(u64) end
 const sizeof(int)  sizeof(u64) end
-const sizeof(addr) sizeof(u64) end
 
 const NULL 0 end
 
