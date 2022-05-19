@@ -1,45 +1,41 @@
 include "std.no"
 
 const User.name sizeof(ptr) increment end
-const User.age  sizeof(u64) increment end
+const User.age  sizeof(int) increment end
 const sizeof(User)              reset end
 
-memory user           sizeof(User) end
-memory users     sizeof(ptr) 100 * end
-memory users_sz        sizeof(u64) end
+const USER_CAP 100 end
+memory users    sizeof(User) USER_CAP * end
+memory users_sz             sizeof(int) end
+0 users_sz !64
 
-"Jeff\n"c user User.name + !64
-69        user User.age  + !64
+func userdump
+  0 while dup users_sz @64 < do
+    let index in
+      users index sizeof(User) * + User.name + @64
+      users index sizeof(User) * + User.age  + @64
+      let name age in
+        "User:\n" puts
+        "    Name: "  puts name cstr-to-str puts  "\n" puts
+        "    Age:  "  puts age              print "\n" puts
+      end
+      index
+    end
+    1 +
+  end
+done
 
-               //usr  arr
-               // \/   \/
-macro user-add // ptr ptr
-  sizeof(ptr) users_sz @64 * + !64
+func adduser // users name age
+  let user name age in
+    name user users_sz @64 sizeof(User) * + User.name + !64
+    age  user users_sz @64 sizeof(User) * + User.age  + !64
+  end
   users_sz inc64
 done
 
-macro user-pop // ptr -- ptr
-  sizeof(ptr) users_sz @64 1 - * + @64
-  users_sz dec64
-done
+users "Jeff"c     69 adduser
+users "Someone"c  30 adduser
+users "Somebody"c 15 adduser
+users "Nobody"c    0 adduser
 
-macro user-dump
-  0 while dup users_sz @64 < do
-    users over sizeof(ptr) * + @64
-    User.name + @64 cstr-to-str puts
-    users over sizeof(ptr) * + @64
-    User.age  + @64             print
-    1 +
-  end drop
-done
-
-user users user-add
-user users user-add
-user users user-add
-user users user-add
-user users user-add
-
-users user-pop dup User.name + @64 cstr-to-str puts
-                   User.age  + @64             print
-
-user-dump
+userdump
