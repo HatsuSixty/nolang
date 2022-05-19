@@ -1,0 +1,81 @@
+include "std.no"
+
+memory str  sizeof(Str) end
+memory rad          255 end
+memory file sizeof(ptr) end
+
+"test.txt"c file !64
+
+func writef
+  420                            // mode
+  O_CREAT O_WRONLY or O_TRUNC or // flags
+  file @64                       // pathname
+  AT_FDCWD
+  openat
+
+  memory fd sizeof(int) end
+
+  let f in
+    f 0 < if
+      "ERROR: Could not open file for whatever reason\n" eputs
+      1 exit
+    end
+    f fd !64
+  end
+
+  "Hello, world!\n" str !Str
+
+  str @Str fd @64 fputs
+  str @Str fd @64 fputs
+
+  fd @64 close
+
+  0 < if
+    "ERROR: Could not close file for whatever reason\n" eputs
+    1 exit
+  end
+done
+
+func readf
+  memory fd sizeof(int) end
+
+  420      // mode
+  O_RDONLY // flags
+  file @64 // pathname
+  AT_FDCWD
+  openat
+  let f in
+    f 0 < if
+      "ERROR: Could not open file for whatever reason\n" eputs
+      1 exit
+    end
+    f fd !64
+  end
+
+  str @Str strlen 2 *
+  rad
+  fd @64
+  read
+  0 < if
+    "ERROR: Could not read file for whatever reason\n" eputs
+    1 exit
+  end
+
+  fd @64 close
+  0 < if
+    "ERROR: Could not close file for whatever reason\n" eputs
+    1 exit
+  end
+
+  rad cstr-to-str puts
+done
+
+func deletef
+  file @64
+  SYS_unlink
+  syscall1
+done
+
+writef
+readf
+deletef
