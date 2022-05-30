@@ -2,3 +2,4 @@
 // should not
 // generate any
 // assembly
+func main done

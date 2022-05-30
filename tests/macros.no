@@ -8,6 +8,8 @@ macro .
   !8
 done
 
-"sus" puts
-69 mem .
-mem , print
+func main
+  "sus" puts
+  69 mem .
+  mem , print
+done

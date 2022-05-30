@@ -1,7 +1,9 @@
 include "std.no"
 
-macro main
+macro mac
   here puts "\n" puts
 done
 
-main
+func main
+  mac
+done

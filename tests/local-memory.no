@@ -5,5 +5,3 @@ func main
   "Hello, world!\n" hello !Str
   hello @Str puts
 done
-
-main

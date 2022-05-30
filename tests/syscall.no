@@ -1,1 +1,3 @@
-"Hello, world!\n" 1 1 syscall3 drop
+func main
+  "Hello, world!\n" 1 1 syscall3 drop
+done

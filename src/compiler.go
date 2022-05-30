@@ -533,11 +533,11 @@ func generateYasmLinux_x86_64(program []Op, output string) {
 		for o := range fn.ops {
 			generateOpIntelLinux_x86_64(o, fn.ops, f, "p" + strconv.Itoa(fn.id) + "addr_")
 		}
+		f.WriteString("    ;; -- return --\n")
 		f.WriteString("    mov rax, [ret_stack_rsp]\n")
 		f.WriteString("    add rax, " + strconv.Itoa(1 * 8) + "\n")
-		f.WriteString("    push QWORD [rax]\n")
 		f.WriteString("    mov [ret_stack_rsp], rax\n")
-		f.WriteString("    pop rbx\n")
+		f.WriteString("    mov rbx, QWORD [rax]\n")
 		f.WriteString("    jmp rbx\n")
 	}
 	f.WriteString("global _start\n"                        )
@@ -1051,7 +1051,7 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 			pathtofile = includepath
 		}
 
-		includeops := compileFileIntoOps(pathtofile)
+		includeops := compileFileIntoOps(pathtofile, false)
 		ops = append(ops, includeops...)
 		i += 1
 	case token.scontent == keywordAsString(KEYWORD_CONST):  // end include parsing
@@ -1453,12 +1453,32 @@ func compileTokensIntoOps(tokens []Token, insideproc bool) []Op {
 
 		switch token.kind {
 		case TOKEN_INT:
+			if !insideproc {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Integers are not allowed at the top level of the program\n",
+					token.loc.f, token.loc.r, token.loc.c)
+				os.Exit(1)
+			}
 			ops = append(ops, Op{op: OP_PUSH_INT, operand: Operand(token.icontent), loc: token.loc})
 		case TOKEN_STR:
+			if !insideproc {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Strings are not allowed at the top level of the program\n",
+					token.loc.f, token.loc.r, token.loc.c)
+				os.Exit(1)
+			}
 			ops = append(ops, Op{op: OP_PUSH_STR, operstr: OperStr(token.scontent), loc: token.loc})
 		case TOKEN_CSTR:
+			if !insideproc {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Strings are not allowed at the top level of the program\n",
+					token.loc.f, token.loc.r, token.loc.c)
+				os.Exit(1)
+			}
 			ops = append(ops, Op{op: OP_PUSH_CSTR, operstr: OperStr(token.scontent), loc: token.loc})
 		case TOKEN_WORD:
+			if !insideproc {
+				fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Words are not allowed at the top level of the program\n",
+					token.loc.f, token.loc.r, token.loc.c)
+				os.Exit(1)
+			}
 			ops = append(ops, handleWord(token)...)
 		case TOKEN_KEYWORD:
 			i, ops = handleKeyword(i, tokens, ops, insideproc)
@@ -1468,6 +1488,7 @@ func compileTokensIntoOps(tokens []Token, insideproc bool) []Op {
 		}
 		i += 1
 	}
+
 	return crossreferenceBlocks(ops)
 }
 
@@ -1475,9 +1496,27 @@ func compileTokensIntoOps(tokens []Token, insideproc bool) []Op {
 
 ////////// COMPILER //////////
 
-func compileFileIntoOps(filepath string) []Op {
+func compileFileIntoOps(filepath string, findmain bool) []Op {
 	tokens := lexfile(filepath)
 	ops    := compileTokensIntoOps(tokens, false)
+
+	if findmain {
+		found := false
+		for f := range funcs {
+			funcc := funcs[f]
+			if funcc.name == "main" {
+				ops = append(ops, Op{op: OP_CALL, operand: Operand(funcc.id)})
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			fmt.Fprintf(os.Stderr, "ERROR: Function `main` not found\n")
+			os.Exit(1)
+		}
+	}
+
 	return ops
 }
 

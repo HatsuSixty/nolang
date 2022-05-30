@@ -32,7 +32,7 @@ func main() {
 		os.Exit(4)
 	}
 
-	program := compileFileIntoOps(cfile)
+	program := compileFileIntoOps(cfile, true)
 	outasm := outfile + ".asm"
 	outobj := outfile + ".o"
 	generateYasmLinux_x86_64(program, outasm)
