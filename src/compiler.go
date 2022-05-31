@@ -664,7 +664,7 @@ func crossreferenceBlocks(program []Op) []Op {
 		var unclosedBlock int
 		stack, unclosedBlock = popInt(stack)
 		loc := mprogram[unclosedBlock].loc
-		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block %d\n", loc.f, loc.r, loc.c, mprogram[unclosedBlock].op)
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Unclosed block\n", loc.f, loc.r, loc.c)
 		os.Exit(1)
 	}
 
@@ -1210,7 +1210,23 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 		}
 
 		ops = append(ops, Op{op: OP_BIND, operand: Operand(binded), loc: token.loc})
-	case token.scontent == keywordAsString(KEYWORD_FUNC): // end let parsing
+	case token.scontent == keywordAsString(KEYWORD_IN): // end let parsing
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `in` to close blocks that are not `let` is not allowed\n",
+			token.loc.f, token.loc.r, token.loc.c)
+		os.Exit(1)
+	case token.scontent == keywordAsString(KEYWORD_DONE):
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: Using `done` to close blocks that are not `func` or `macro` is not allowed\n",
+			token.loc.f, token.loc.r, token.loc.c)
+		os.Exit(1)
+	case token.scontent == keywordAsString(KEYWORD_INCREMENT):
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `increment` is only supported at compile time evaluation\n",
+			token.loc.f, token.loc.r, token.loc.c)
+		os.Exit(1)
+	case token.scontent == keywordAsString(KEYWORD_RESET):
+		fmt.Fprintf(os.Stderr, "%s:%d:%d: ERROR: `reset` is only supported at compile time evaluation\n",
+			token.loc.f, token.loc.r, token.loc.c)
+		os.Exit(1)
+	case token.scontent == keywordAsString(KEYWORD_FUNC):
 		// begin function parsing
 		if !((len(tokens)-1) >= i + 1) {
 			loc := token.loc
