@@ -945,8 +945,6 @@ func expandMacro(macro Macro) []Op {
 	return opers
 }
 
-var bindid int = 0
-
 func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op) {
 	if insideproc {}
 	token := tokens[i]
@@ -1185,6 +1183,7 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 		}
 
 		err := true
+		binded := 0
 		i += 1
 		for i < len(tokens) {
 			if stringAsKeyword(tokens[i].scontent) == KEYWORD_IN {
@@ -1199,8 +1198,8 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 				os.Exit(1)
 			}
 
-			bindings = append(bindings, Bind{name: tokens[i].scontent, index: bindid})
-			bindid += 1
+			bindings = append(bindings, Bind{name: tokens[i].scontent, index: binded})
+			binded += 1
 			i  += 1
 		}
 
@@ -1210,7 +1209,7 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 			os.Exit(1)
 		}
 
-		ops = append(ops, Op{op: OP_BIND, operand: Operand(len(bindings)), loc: token.loc})
+		ops = append(ops, Op{op: OP_BIND, operand: Operand(binded), loc: token.loc})
 	case token.scontent == keywordAsString(KEYWORD_FUNC): // end let parsing
 		// begin function parsing
 		if !((len(tokens)-1) >= i + 1) {
