@@ -1,0 +1,34 @@
+const sizeof(int)           8 end
+const sizeof(ptr) sizeof(int) end
+
+const Str.count sizeof(int) increment end
+const Str.data  sizeof(ptr) increment end
+const sizeof(Str)               reset end
+
+macro store-str
+  let n s ptr in
+    n ptr Str.count + !64
+    s ptr Str.data  + !64
+  end
+done
+
+macro load-str
+  let ptr in
+    ptr Str.count + @64
+    ptr Str.data  + @64
+  end
+done
+
+func main
+  memory hello sizeof(Str) end
+
+  // store string
+  "Hello, world!\n"
+  hello
+  store-str
+
+  // load string
+  hello
+  load-str
+  1 1 syscall3 drop
+done
