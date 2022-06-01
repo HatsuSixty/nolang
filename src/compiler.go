@@ -945,14 +945,6 @@ func expandMacro(macro Macro) []Op {
 	return opers
 }
 
-func updateBindIndex() {
-	in := 0
-	for i := len(bindings)-1; i >= 0; i -= 1 {
-		bindings[i].index = in
-		in += 1
-	}
-}
-
 func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op) {
 	if insideproc {}
 	token := tokens[i]
@@ -1190,7 +1182,6 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 			os.Exit(1)
 		}
 
-		lettoks := []Token{}
 		err := true
 		binded := 0
 		i += 1
@@ -1207,13 +1198,9 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 				os.Exit(1)
 			}
 
-			lettoks = append(lettoks, tokens[i])
+			bindings = append(bindings, Bind{name: tokens[i].scontent, index: binded})
 			binded += 1
 			i  += 1
-		}
-
-		for i := (len(lettoks)-1); i >= 0; i -= 1 {
-			bindings = append(bindings, Bind{name: lettoks[i].scontent})
 		}
 
 		if err {
@@ -1221,8 +1208,6 @@ func handleKeyword(i int, tokens []Token, ops []Op, insideproc bool) (int, []Op)
 				token.loc.f, token.loc.r, token.loc.c)
 			os.Exit(1)
 		}
-
-		updateBindIndex()
 
 		ops = append(ops, Op{op: OP_BIND, operand: Operand(binded), loc: token.loc})
 	case token.scontent == keywordAsString(KEYWORD_IN): // end let parsing
